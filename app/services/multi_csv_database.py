@@ -1,5 +1,5 @@
 
-from typing import List
+from typing import List, Union
 from ..schemas.database import CSVDatabase
 from ..models.health_record import Record
 
@@ -33,3 +33,15 @@ class MultiCSVDatabase:
                 continue
                 
         return total_matches, all_records
+    
+    def get_unique_values(self, column: str) -> List[Union[str, int, float]]:
+        """Get unique values from a specific column across all databases."""
+        unique_values = set()
+        for db in self.databases:
+            try:
+                values = db.get_unique_values(column)
+                unique_values.update(values)
+            except ValueError:
+                continue
+                
+        return sorted(list(unique_values))

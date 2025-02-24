@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 import logging
 
 logger = logging.getLogger(__name__)
@@ -75,10 +75,10 @@ class CSVDatabase:
         """Return list of available columns."""
         return self.df.columns.tolist()
 
-    def get_stats(self) -> Dict[str, Any]:
-        """Return basic statistics about the database."""
-        return {
-            "total_records": len(self.df),
-            "columns": self.get_columns(),
-            "memory_usage": self.df.memory_usage(deep=True).sum() / 1024**2  # MB
-        }
+    def get_unique_values(self, column: str) -> List[Union[str, int, float]]:
+        """Get unique values from a specific column."""
+        if column not in self.df.columns:
+            raise ValueError(f"Column '{column}' not found in database")
+        
+        # Convert to Python native types before returning
+        return self.df[column].unique().tolist()

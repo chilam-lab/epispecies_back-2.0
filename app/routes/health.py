@@ -10,7 +10,6 @@ async def root():
         "endpoints": [
             "/search - Search records across all databases",
             "/columns - List available columns from all databases",
-            "/stats - Get database statistics"
         ]
     }
 
