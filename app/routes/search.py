@@ -3,6 +3,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from ..services.multi_csv_database import MultiCSVDatabase
 from fastapi import Request
 from typing import List, Union
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/search")
 
@@ -18,7 +22,7 @@ async def get_columns(db: MultiCSVDatabase = Depends(get_db)):
 async def get_unique_values(
     column: str,
     db: MultiCSVDatabase = Depends(get_db)
-) -> List[Union[str, int, float]]:  # Now accepts strings, integers and floats
+) -> List[Union[str, int, float]]: 
     """Get unique values from any column."""
     try:
         # Get the correct column name from Record class fields
@@ -42,3 +46,18 @@ async def get_unique_values(
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@router.get("/year/{year}")
+async def get_records_by_year(
+    year: int,
+    db: MultiCSVDatabase = Depends(get_db)
+) -> dict:
+    """Get all records from a specific year."""
+    logger.info(f"Received request for year: {year}")
+    total_matches, records = db.get_records_of_year(str(year))
+    
+    logger.info(f"Returning {total_matches} records")
+    return {
+        "total": total_matches,
+        "records": records
+    }

@@ -12,8 +12,3 @@ async def root():
             "/columns - List available columns from all databases",
         ]
     }
-
-@router.get("/stats")
-async def get_stats():
-    """Get combined database statistics."""
-    return app.state.db.get_stats()
