@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routes import search, health
+from .routes import search, health, inegi
 from .schemas.database import CSVDatabase
 from .services.multi_csv_database import MultiCSVDatabase
 import os
@@ -26,6 +26,6 @@ async def startup_event():
             
     app.state.db = MultiCSVDatabase(databases)
 
-# Include routers
 app.include_router(health.router)
 app.include_router(search.router)
+app.include_router(inegi.router)
