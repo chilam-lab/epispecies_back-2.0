@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
 from .routes import search, health, inegi
 from .schemas.database import CSVDatabase
 from .services.multi_csv_database import MultiCSVDatabase
@@ -46,9 +47,24 @@ async def lifespan(app: FastAPI):
         logger.info("Shutting down: Cleaning up MultiCSVDatabase...")
         app.state.db = None
 
-# Pass the lifespan handler directly to the FastAPI constructor
+# Initialize FastAPI app with lifespan
 app = FastAPI(title="Multi-CSV Database API", lifespan=lifespan)
 
+# Configure CORS
+origins = [
+    "http://localhost:4200",  # Allow Angular dev server
+    # Add other origins as needed, e.g., "https://your-production-domain.com"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,  # Set to True if you use cookies/auth, False otherwise
+    allow_methods=["*"],     # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],     # Allow all headers
+)
+
+# Include routers
 app.include_router(health.router)
 app.include_router(search.router)
 app.include_router(inegi.router)
