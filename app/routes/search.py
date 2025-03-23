@@ -2,7 +2,7 @@ from app.models.health_record import Record
 from fastapi import APIRouter, HTTPException, Depends
 from ..services.multi_csv_database import MultiCSVDatabase
 from fastapi import Request
-from typing import List, Union
+from typing import List, Union, Dict
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -46,7 +46,49 @@ async def get_unique_values(
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
+@router.get("/unique-pairs")
+async def get_unique_pairs(
+    column1: str,
+    column2: str,
+    db: MultiCSVDatabase = Depends(get_db)
+) -> List[Dict[str, Union[str, int, float]]]:
+    """
+    Get unique pairs of values from two specified columns.
+    Returns a list of dictionaries with the two columns and their corresponding values.
+    """
+    try:
+        record_fields = Record.__annotations__.keys()
+        
+        column1_lower = column1.lower()
+        column2_lower = column2.lower()
+        
+        matching_field1 = next(
+            (field for field in record_fields if field.lower() == column1_lower),
+            None
+        )
+        matching_field2 = next(
+            (field for field in record_fields if field.lower() == column2_lower),
+            None
+        )
+        
+        if not matching_field1:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Column '{column1}' not found. Available columns are: {list(record_fields)}"
+            )
+        if not matching_field2:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Column '{column2}' not found. Available columns are: {list(record_fields)}"
+            )
+            
+        unique_pairs = db.get_unique_pairs(matching_field1, matching_field2)
+        return unique_pairs
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.get("/year/{year}")
 async def get_records_by_year(
     year: int,

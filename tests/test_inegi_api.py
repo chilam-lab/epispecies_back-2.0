@@ -1,6 +1,6 @@
 # tests/test_inegi_api.py
 import pytest
-import httpx  # Add this import
+import httpx
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from app.main import app
@@ -10,7 +10,6 @@ pytestmark = pytest.mark.asyncio
 
 client = TestClient(app)
 
-# Mock fixtures
 @pytest.fixture
 def mock_inegi_response(monkeypatch):
     """Mock the INEGI API response"""

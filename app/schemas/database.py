@@ -82,6 +82,18 @@ class CSVDatabase:
         # Convert to Python native types before returning
         return self.df[column].unique().tolist()
     
+    def get_unique_pairs(self, column1: str, column2: str) -> List[Dict[str, Union[str, int, float]]]:
+        """Get unique pairs of values from two specified columns."""
+        if column1 not in self.df.columns:
+            raise ValueError(f"Column '{column1}' not found in database")
+        if column2 not in self.df.columns:
+            raise ValueError(f"Column '{column2}' not found in database")
+        
+        unique_pairs_df = self.df[[column1, column2]].drop_duplicates()
+        
+        result = unique_pairs_df.to_dict('records')
+        return result
+    
     def get_records_of_year(self, column: str, value: str, limit: Optional[int] = None) -> tuple[int, List[Dict[str, Any]]]:
         """Search for records where column matches value."""
         if column not in self.df.columns:
@@ -95,13 +107,11 @@ class CSVDatabase:
         # Convert column to string and value to match data type
         mask = self.df[column].astype(str).str.contains(str(value), case=False, na=False)
         
-        # Log match info
         matched_records = self.df[mask]
         total_matches = len(matched_records)
         logger.info(f"Found {total_matches} matches")
         
         if total_matches == 0:
-            # Log some sample data to help debug
             logger.info(f"Sample of data where matches failed: {self.df[column].head(10).tolist()}")
         
         records = matched_records.to_dict('records')

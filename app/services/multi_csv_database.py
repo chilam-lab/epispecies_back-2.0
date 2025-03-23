@@ -1,4 +1,4 @@
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict
 from ..schemas.database import CSVDatabase
 from ..models.health_record import Record
 import logging
@@ -80,6 +80,25 @@ class MultiCSVDatabase:
                 continue
                 
         return sorted(list(unique_values))
+    
+    def get_unique_pairs(self, column1: str, column2: str) -> List[Dict[str, Union[str, int, float]]]:
+        """Get unique pairs of values from two specified columns across all databases."""
+        all_pairs = []
+        seen_pairs = set() 
+        
+        for db in self.databases:
+            try:
+                pairs = db.get_unique_pairs(column1, column2)
+                for pair in pairs:
+                    # Create a tuple of the pair for comparison
+                    pair_tuple = (pair[column1], pair[column2])
+                    if pair_tuple not in seen_pairs:
+                        seen_pairs.add(pair_tuple)
+                        all_pairs.append(pair)
+            except ValueError:
+                continue
+                
+        return all_pairs
     
     def get_records_of_year(self, year: str) -> tuple[int, List['DynamicRecord']]:
         """Get all records for a specific year across all databases."""
