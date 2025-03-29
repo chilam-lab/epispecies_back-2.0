@@ -15,7 +15,7 @@ async def get_db(request: Request) -> MultiCSVDatabase:
 
 @router.get("/columns", tags=["Search"])
 async def get_columns(db: MultiCSVDatabase = Depends(get_db)):
-    """Get list of available columns across all databases."""
+    """(Obtiene el nombre de los registros de la bd)Get list of available columns across all databases."""
     return {"columns": db.get_columns()}
 
 @router.get("/unique", tags=["Search"])
@@ -23,7 +23,7 @@ async def get_unique_values(
     column: str,
     db: MultiCSVDatabase = Depends(get_db)
 ) -> List[Union[str, int, float]]: 
-    """Get unique values from any column."""
+    """(Obtiene los valores de los registros de la bd)Get unique values from any column."""
     try:
         # Get the correct column name from Record class fields
         record_fields = Record.__annotations__.keys()

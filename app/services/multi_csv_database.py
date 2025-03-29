@@ -29,7 +29,7 @@ def create_dynamic_record_class(column_names: List[str]):
                 setattr(self, col, value)
                 
         def __str__(self):
-            return ', '.join(f"{key}={value}" for key, value in self.__dict__.items())
+            return str(', '.join(f"{key}={value}" for key, value in self.__dict__.items()))
         
         def to_dict(self):
             """Convert instance to dictionary for compatibility."""
@@ -113,8 +113,10 @@ class MultiCSVDatabase:
                 logger.info(f"Found {matches} matches in database")
                 total_matches += matches
                 # Use dynamic record class instead of static Record
+                # Comment the following 2 lines and uncomment the last for it to work with dic
                 record_objects = [self.record_class(**record) for record in records]
                 all_records.extend(record_objects)
+                #all_records.extend(records)
                     
             except ValueError as e:
                 logger.warning(f"Error searching database: {str(e)}")
