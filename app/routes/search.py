@@ -13,12 +13,12 @@ router = APIRouter(prefix="/search")
 async def get_db(request: Request) -> MultiCSVDatabase:
     return request.app.state.db
 
-@router.get("/columns")
+@router.get("/columns", tags=["Search"])
 async def get_columns(db: MultiCSVDatabase = Depends(get_db)):
     """Get list of available columns across all databases."""
     return {"columns": db.get_columns()}
 
-@router.get("/unique")
+@router.get("/unique", tags=["Search"])
 async def get_unique_values(
     column: str,
     db: MultiCSVDatabase = Depends(get_db)
@@ -47,7 +47,7 @@ async def get_unique_values(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/unique-pairs")
+@router.get("/unique-pairs", tags=["Search"])
 async def get_unique_pairs(
     column1: str,
     column2: str,
@@ -89,7 +89,7 @@ async def get_unique_pairs(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/year/{year}")
+@router.get("/year/{year}", tags=["Search"])
 async def get_records_by_year(
     year: int,
     db: MultiCSVDatabase = Depends(get_db)

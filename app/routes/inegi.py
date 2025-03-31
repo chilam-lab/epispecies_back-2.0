@@ -32,7 +32,7 @@ async def fetch_inegi_variables() -> List[Dict[str, Any]]:
             detail=f"INEGI API error: {e.response.text}"
         )
 
-@router.get("/variables")
+@router.get("/variables", tags=["INEGI"])
 async def get_inegi_variables():
     """
     Endpoint to get INEGI variables

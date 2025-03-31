@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
         app.state.db = None
 
 # Initialize FastAPI app with lifespan
-app = FastAPI(title="Multi-CSV Database API", lifespan=lifespan)
+app = FastAPI(title="EpiSpecies API", lifespan=lifespan, version="2.0.0")
 
 origins = [
     "http://localhost:4200",

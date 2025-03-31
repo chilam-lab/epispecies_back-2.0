@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
-@router.get("/")
+@router.get("/", tags=["Home"])
 async def root():
     """Get basic information about the API."""
     return {
