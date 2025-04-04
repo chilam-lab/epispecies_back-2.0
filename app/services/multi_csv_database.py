@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from typing import Optional, List, Union, Dict
 from ..schemas.database import CSVDatabase
 from ..models.health_record import Record
@@ -10,32 +11,25 @@ def create_dynamic_record_class(column_names: List[str]):
     """Create a dynamic Record class based on provided column names."""
     # Clean up column names
     cleaned_columns = [col.strip().replace(' ', '_').lower() for col in column_names]
-    print(cleaned_columns)
-    
-    # Create dynamic class
-    class DynamicRecord:
-        def __init__(self, **kwargs):
-            for col in cleaned_columns:
-                value = kwargs.get(col)
-                if value is not None:
-                    # Optional: Add type conversion
-                    try:
-                        if str(value).isdigit():
-                            value = int(value)
-                        elif str(value).replace('.', '').isdigit():
-                            value = float(value)
-                    except (ValueError, AttributeError):
-                        pass
-                setattr(self, col, value)
-                
-        def __str__(self):
-            return str(', '.join(f"{key}={value}" for key, value in self.__dict__.items()))
-        
-        def to_dict(self):
-            """Convert instance to dictionary for compatibility."""
-            return self.__dict__.copy()
-    
+    print(cleaned_columns)    
     return type('DynamicRecord', (object,), dict(DynamicRecord.__dict__))
+
+# Create dynamic class
+@dataclass
+class DynamicRecord:
+    column_Dt: Dict[str, any]
+    # column_lstDt: List[Dict] = field(init=False)
+
+    # Constructor for single column
+    # def __post_init__(self):
+      #  self.column_lstDt = List[self.column_Dt]
+                
+    #def __str__(self):
+     #   return ', '.join(f"{key}={value}" for key, value in self.__dict__.items())
+        
+    #def to_dict(self):
+    #    """Convert instance to dictionary for compatibility."""
+    #    return self.__dict__.copy()
 
 class MultiCSVDatabase:
     def __init__(self, databases: List[CSVDatabase]):
@@ -113,10 +107,8 @@ class MultiCSVDatabase:
                 logger.info(f"Found {matches} matches in database")
                 total_matches += matches
                 # Use dynamic record class instead of static Record
-                # Comment the following 2 lines and uncomment the last for it to work with dic
-                record_objects = [self.record_class(**record) for record in records]
+                record_objects = [self.record_class(record) for record in records]
                 all_records.extend(record_objects)
-                #all_records.extend(records)
                     
             except ValueError as e:
                 logger.warning(f"Error searching database: {str(e)}")
