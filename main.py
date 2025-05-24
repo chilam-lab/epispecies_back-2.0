@@ -5,6 +5,8 @@ from typing import Generator
 from fastapi.encoders import jsonable_encoder
 from services.clean_csv import clean_csv_in_chunks
 import os
+from pydantic import BaseModel
+from typing import Optional
 
 from os import listdir
 from os.path import isfile, join, splitext
@@ -80,8 +82,6 @@ def init_db():
 async def startup_event():
     global db_connection
     db_connection = duckdb.connect("db/my_database.db")
-    db_connection.sql("SET threads TO 4;")
-    db_connection.sql("SET memory_limit = '4GB';")
     init_db()
 
 @app.on_event("shutdown")
@@ -161,32 +161,53 @@ async def get_unique_columns(column1: str, column2: str, table: str, con: DuckDB
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 
-@app.get("/get_second_level_class")
-async def get_second_class_list(id_first_level_class: str, ordered_by:str, con: DuckDBConn = Depends(get_db)):
+class SecondLevelClassRequest(BaseModel):
+    column_id: str
+    column_description: str
+    table: str
+    search_id: str
+    orderedby: str
+
+@app.post("/get_second_level_class")
+async def get_second_class_list(request: SecondLevelClassRequest, con: DuckDBConn = Depends(get_db)):
     try:
-        if not id_first_level_class or not ordered_by:
-            raise HTTPException(status_code=400, detail="Invalid input: id_first_level_class and ordered_by are required")
-        result = con.sql("""
-            SELECT DISTINCT CVE_Grupo, Grupo
-            FROM ENFERMEDADES
+        if not request.search_id or not request.orderedby:
+            raise HTTPException(status_code=400, detail="Invalid input: search_id and orderedby are required")
+        
+        result = con.sql(f"""
+            SELECT DISTINCT {request.column_id}, {request.column_description}
+            FROM {request.table}
             WHERE CVE_Enfermedad = ?
-            ORDER BY ?
-        """, params=[id_first_level_class, ordered_by]).fetchall()
+            ORDER BY {request.orderedby}
+        """, params=[request.search_id]).fetchall()
+        
         return result if result else {"message": "No data found"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/get_third_level_class")
-async def get_third_class_list(id_first_level_class: str, id_second_class: str, ordered_by:str, con: DuckDBConn = Depends(get_db)):
+class ThirdLevelClassRequest(BaseModel):
+    id_third_class: str
+    third_class_description: str
+    table: str
+    where_column_name: str
+    where_column_name2: str
+    id_first_class: str
+    id_second_class: str
+    orderedby: str
+
+@app.post("/get_third_level_class")
+async def get_third_class_list(request: ThirdLevelClassRequest, con: DuckDBConn = Depends(get_db)):
     try:
-        if not id_sick or not id_second_class:
-            raise HTTPException(status_code=400, detail="Invalid input: id_first_level_class, id_second_class and ordered_by are required")
-        result = con.sql("""
-            SELECT DISTINCT cve_causa_def, causa_def
-            FROM ENFERMEDADES
-            WHERE cve_grupo = ? AND cve_enfermedad = ?
-            ORDER BY ?
-        """, params=[id_second_class, id_first_level_class, ordered_by]).fetchall()
+        if not request.id_first_class or not request.id_second_class or not request.orderedby:
+            raise HTTPException(status_code=400, detail="Invalid input: id_first_class, id_second_class, and orderedby are required")
+        
+        result = con.sql(f"""
+            SELECT DISTINCT {request.id_third_class}, {request.third_class_description}
+            FROM {request.table}
+            WHERE {request.where_column_name} = ? AND {request.where_column_name2} = ?
+            ORDER BY {request.orderedby}
+        """, params=[request.id_second_class, request.id_first_class]).fetchall()
+        
         return result if result else {"message": "No data found"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")

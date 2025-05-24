@@ -110,7 +110,14 @@ def test_get_unique_columns(client):
 
 # Test for /get_second_class endpoint
 def test_get_second_class(client):
-    response = client.get("/get_second_level_class?id_first_level_class=E1&ordered_by=Grupo")
+    payload = {
+        "column_id": "CVE_Grupo",
+        "column_description": "Grupo",
+        "table": "ENFERMEDADES",
+        "search_id": "E1",
+        "orderedby": "Grupo"
+    }
+    response = client.post("/get_second_level_class", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
@@ -118,12 +125,22 @@ def test_get_second_class(client):
     assert ["G2", "Group2"] in data
 
 # Test for /get_third_class endpoint
-def test_get_third_class(client):
-    response = client.get("/get_third_level_class?id_first_level_class=E1&id_second_class=G1&ordered_by=Causa_def")
-    assert response.status_code == 200
+def test_get_third_class(client: TestClient):
+    payload = {
+        "id_third_class": "CVE_Causa_def",
+        "third_class_description": "Causa_def",
+        "table": "ENFERMEDADES",
+        "where_column_name": "CVE_Grupo",
+        "where_column_name2": "CVE_Enfermedad",
+        "id_first_class": "E1",
+        "id_second_class": "G1",
+        "orderedby": "Causa_def"
+    }
+    response = client.post("/get_third_level_class", json=payload)
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}. Response: {response.text}"
     data = response.json()
-    assert len(data) == 1
-    assert ["C1", "Cause1"] in data
+    assert len(data) == 1, f"Expected 1 item, got {len(data)}"
+    assert ["C1", "Cause1"] in data, f"Expected ['C1', 'Cause1'] in {data}"
 
 # Test for /get_unique endpoint
 def test_get_unique_values(client):
@@ -155,24 +172,38 @@ def test_get_unique_columns_invalid_column(client):
 
 # Test for /get_second_class with no data
 def test_get_second_class_no_data(client):
-    response = client.get("/get_second_level_class?id_first_level_class=invalid&ordered_by=ENFERMEDADES")
+    payload = {
+        "column_id": "CVE_Grupo",
+        "column_description": "Grupo",
+        "table": "ENFERMEDADES",
+        "search_id": "invalid",
+        "orderedby": "Grupo"
+    }
+    response = client.post("/get_second_level_class", json=payload)
     assert response.status_code == 200
     assert response.json() == {"message": "No data found"}
 
-# Test for /get_second_class with missing parameter
 def test_get_second_class_missing_param(client):
-    response = client.get("/get_second_level_class")
+    response = client.post("/get_second_level_class")
     assert response.status_code == 422
     assert any(error["type"] == "missing" for error in response.json()["detail"])
 
 # Test for /get_third_class with no data
-def test_get_third_class_no_data(client):
-    response = client.get("/get_third_level_class?id_first_level_class=E1&id_second_class=invalid&ordered_by=ENFERMEDADES")
-    assert response.status_code == 200
-    assert response.json() == {"message": "No data found"}
-
-# Test for /get_third_class with missing parameters
-def test_get_third_class_missing_params(client):
-    response = client.get("/get_third_level_class?id_first_level_class=E1")
-    assert response.status_code == 422
-    assert any(error["type"] == "missing" for error in response.json()["detail"])
+def test_get_third_class_no_data(client: TestClient):
+    payload = {
+        "id_third_class": "CVE_Causa_def",
+        "third_class_description": "Causa_def",
+        "table": "ENFERMEDADES",
+        "where_column_name": "CVE_Grupo",
+        "where_column_name2": "CVE_Enfermedad",
+        "id_first_class": "E1",
+        "id_second_class": "invalid",
+        "orderedby": "Causa_def"
+    }
+    response = client.post("/get_third_level_class", json=payload)
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}. Response: {response.text}"
+    assert response.json() == {"message": "No data found"}, f"Expected 'No data found', got {response.json()}"
+def test_get_third_class_missing_params(client: TestClient):
+    response = client.post("/get_third_level_class")
+    assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
+    assert any(error["type"] == "missing" for error in response.json()["detail"]), "Expected 'missing' error type"
