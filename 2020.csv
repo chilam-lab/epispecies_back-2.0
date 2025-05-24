@@ -1,0 +1,3 @@
+CVE_Enfermedad,Enfermedad,CVE_Grupo,Grupo,CVE_Causa_def,Causa_def,CVE_Estado,Estado,CVEGEO,Municipio,Longitud,latitud,CVE_Metropoli,Metropolis,Ambito,Sexo,Edad_gpo,Ocupacion,Escolaridad,Edo_civil,Dia,Mes,Anio,Hora
+4,hola,2,Diabetes mellitus,E129,"Diabetes mellitus asociada con desnutrición, sin mención de complicación",1,Aguascalientes,1001,Aguascalientes,-102.2958029,21.8114362,M01.01,Aguascalientes,Urbano,2,22,11,3,9,1,2,2025,9
+10,hola2,2,Influenza (gripe) y neumonia,J189,"Neumonía, no especificada",1,Aguascalientes,1001,Aguascalientes,-102.2958029,21.8114362,M01.01,Aguascalientes,Urbano,1,11,5,4,5,12,11,2027,21
