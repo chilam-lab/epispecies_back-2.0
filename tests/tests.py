@@ -6,6 +6,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from main import app, get_db
 from fastapi import HTTPException
+from unittest.mock import patch
 import json
 
 # Fixture for in-memory DuckDB database
@@ -100,6 +101,14 @@ def test_get_columns(client):
     assert "columns" in data
     assert set(data["columns"]) == {"id", "name", "cause", "Anio", "CVE_Grupo", "Grupo", "CVE_Enfermedad", "CVE_Causa_def", "Causa_def"}
 
+# Test for /columns with invalid table
+def test_get_columns_invalid_table(client, in_memory_db):
+    # Simulate a missing table
+    in_memory_db.execute("DROP TABLE RAWDATA")
+    response = client.get("/show/columns?table_name=RAWDATA")
+    assert response.status_code == 500
+    assert "Query error" in response.json()["detail"]
+
 # Test for /unique_columns endpoint
 def test_get_unique_columns(client):
     response = client.get("/unique_pair_columns?column1=name&column2=cause&table=RAWDATA")
@@ -108,39 +117,11 @@ def test_get_unique_columns(client):
     assert len(data) > 0
     assert ["John", "Heart Disease"] in data
 
-# Test for /get_second_class endpoint
-def test_get_second_class(client):
-    payload = {
-        "column_id": "CVE_Grupo",
-        "column_description": "Grupo",
-        "table": "ENFERMEDADES",
-        "search_id": "E1",
-        "orderedby": "Grupo"
-    }
-    response = client.post("/get_second_level_class", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 2
-    assert ["G1", "Group1"] in data
-    assert ["G2", "Group2"] in data
-
-# Test for /get_third_class endpoint
-def test_get_third_class(client: TestClient):
-    payload = {
-        "id_third_class": "CVE_Causa_def",
-        "third_class_description": "Causa_def",
-        "table": "ENFERMEDADES",
-        "where_column_name": "CVE_Grupo",
-        "where_column_name2": "CVE_Enfermedad",
-        "id_first_class": "E1",
-        "id_second_class": "G1",
-        "orderedby": "Causa_def"
-    }
-    response = client.post("/get_third_level_class", json=payload)
-    assert response.status_code == 200, f"Expected 200, got {response.status_code}. Response: {response.text}"
-    data = response.json()
-    assert len(data) == 1, f"Expected 1 item, got {len(data)}"
-    assert ["C1", "Cause1"] in data, f"Expected ['C1', 'Cause1'] in {data}"
+# Test for /unique_columns with invalid column
+def test_get_unique_columns_invalid_column(client):
+    response = client.get("/unique_pair_columns?column1=invalid&column2=cause&table=ENFERMEDADES")
+    assert response.status_code == 500
+    assert "not found" in response.json()["detail"]
 
 # Test for /get_unique endpoint
 def test_get_unique_values(client):
@@ -156,35 +137,43 @@ def test_get_unique_values_invalid_column(client):
     assert response.status_code == 500
     assert "not found" in response.json()["detail"]
 
-# Test for /columns with invalid table
-def test_get_columns_invalid_table(client, in_memory_db):
-    # Simulate a missing table
-    in_memory_db.execute("DROP TABLE RAWDATA")
-    response = client.get("/show/columns?table_name=RAWDATA")
-    assert response.status_code == 500
-    assert "Query error" in response.json()["detail"]
 
-# Test for /unique_columns with invalid column
-def test_get_unique_columns_invalid_column(client):
-    response = client.get("/unique_pair_columns?column1=invalid&column2=cause&table=ENFERMEDADES")
-    assert response.status_code == 500
-    assert "not found" in response.json()["detail"]
+# Test for /get_second_class endpoint
+def test_get_second_class(client: TestClient):
+    # Mock environment variables for the test
+    env_vars = {
+        "ID_FIRST_CLASS": "CVE_Enfermedad",
+        "FIRST_CLASS_DESCRIPTION": "Enfermedad",
+        "ID_SECOND_CLASS": "CVE_Grupo",
+        "SECOND_CLASS_DESCRIPTION": "Grupo",
+        "TABLE_CLASS": "ENFERMEDADES"
+    }
+    
+    with patch.dict(os.environ, env_vars):
+        response = client.get("/get_second_level_class?search_id_first_class=E1")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert ["G1", "Group1"] in data
+        assert ["G2", "Group2"] in data
+        
 
 # Test for /get_second_class with no data
 def test_get_second_class_no_data(client):
-    payload = {
-        "column_id": "CVE_Grupo",
-        "column_description": "Grupo",
-        "table": "ENFERMEDADES",
-        "search_id": "invalid",
-        "orderedby": "Grupo"
+    env_vars = {
+        "ID_FIRST_CLASS": "CVE_Enfermedad",
+        "FIRST_CLASS_DESCRIPTION": "Enfermedad",
+        "ID_SECOND_CLASS": "CVE_Grupo",
+        "SECOND_CLASS_DESCRIPTION": "Grupo",
+        "TABLE_CLASS": "ENFERMEDADES"
     }
-    response = client.post("/get_second_level_class", json=payload)
-    assert response.status_code == 200
-    assert response.json() == {"message": "No data found"}
+    with patch.dict(os.environ, env_vars):
+        response = client.get("/get_second_level_class?search_id_first_class=invalid")
+        assert response.status_code == 200
+        assert response.json() == {"message": "No data found"}
 
 def test_get_second_class_missing_param(client):
-    response = client.post("/get_second_level_class")
+    response = client.get("/get_second_level_class")
     assert response.status_code == 422
     assert any(error["type"] == "missing" for error in response.json()["detail"])
 

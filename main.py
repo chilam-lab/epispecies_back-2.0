@@ -7,10 +7,13 @@ from services.clean_csv import clean_csv_in_chunks
 import os
 from pydantic import BaseModel
 from typing import Optional
+from dotenv import load_dotenv
 
 from os import listdir
 from os.path import isfile, join, splitext
 import duckdb
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -24,6 +27,14 @@ app.add_middleware(
 
 DuckDBConn = duckdb.DuckDBPyConnection
 db_connection = None
+
+id_first_class = os.getenv("ID_FIRST_CLASS")
+first_class_description = os.getenv("FIRST_CLASS_DESCRIPTION")
+id_second_class = os.getenv("ID_SECOND_CLASS")
+second_class_description = os.getenv("SECOND_CLASS_DESCRIPTION")
+id_third_class = os.getenv("ID_THIRD_CLASS")
+third_class_description = os.getenv("THIRD_CLASS_DESCRIPTION")
+table_class = os.getenv("TABLE_CLASS")
 
 @contextmanager
 def get_db_connection() -> Generator[duckdb.DuckDBPyConnection, None, None]:
@@ -161,25 +172,18 @@ async def get_unique_columns(column1: str, column2: str, table: str, con: DuckDB
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 
-class SecondLevelClassRequest(BaseModel):
-    column_id: str
-    column_description: str
-    table: str
-    search_id: str
-    orderedby: str
-
-@app.post("/get_second_level_class")
-async def get_second_class_list(request: SecondLevelClassRequest, con: DuckDBConn = Depends(get_db)):
+@app.get("/get_second_level_class")
+async def get_second_class_list(search_id_first_class:str, con: DuckDBConn = Depends(get_db)):
     try:
-        if not request.search_id or not request.orderedby:
-            raise HTTPException(status_code=400, detail="Invalid input: search_id and orderedby are required")
+        if not search_id_first_class:
+            raise HTTPException(status_code=400, detail="Invalid input: search_id_first_class is required")
         
         result = con.sql(f"""
-            SELECT DISTINCT {request.column_id}, {request.column_description}
-            FROM {request.table}
-            WHERE CVE_Enfermedad = ?
-            ORDER BY {request.orderedby}
-        """, params=[request.search_id]).fetchall()
+            SELECT DISTINCT {id_second_class}, {second_class_description}
+            FROM {table_class}
+            WHERE {id_first_class} = ?
+            ORDER BY {second_class_description}
+        """, params=[search_id_first_class]).fetchall()
         
         return result if result else {"message": "No data found"}
     except Exception as e:
