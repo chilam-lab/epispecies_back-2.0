@@ -35,6 +35,7 @@ second_class_description = os.getenv("SECOND_CLASS_DESCRIPTION")
 id_third_class = os.getenv("ID_THIRD_CLASS")
 third_class_description = os.getenv("THIRD_CLASS_DESCRIPTION")
 table_class = os.getenv("TABLE_CLASS")
+table_records = os.getenv("TABLE_RECORDS")
 
 @contextmanager
 def get_db_connection() -> Generator[duckdb.DuckDBPyConnection, None, None]:
@@ -64,7 +65,7 @@ def init_db():
         """)
         db_connection.sql("""
             CREATE OR REPLACE TABLE ENFERMEDADES AS
-            SELECT DISTINCT CVE_Grupo, Grupo, CVE_Enfermedad, CVE_Causa_def, Causa_def
+            SELECT DISTINCT CVE_Grupo, Grupo, CVE_Enfermedad, Enfermedad, CVE_Causa_def, Causa_def
             FROM RAWDATA;
         """)
         db_connection.sql("CREATE INDEX IF NOT EXISTS id_enfermedad ON ENFERMEDADES (CVE_Enfermedad, CVE_Grupo, CVE_Causa_def);")
@@ -206,12 +207,22 @@ async def get_third_class_list(search_id_first_class: str, search_id_second_clas
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/records_by_year_by_column")
+@app.get("/records_by_year")
 async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_db)):
     try:
-        if not id_sick or not id_second_class:
+        if not year or not table:
             raise HTTPException(status_code=400, detail="Invalid input: year and table are required")
         result = con.sql(f"SELECT * FROM {table} WHERE Anio={year};").fetchall()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
+
+@app.get("/records_by_year_by_column")
+async def get_records_year(year: str, search_id_first_class:str, con: DuckDBConn = Depends(get_db)):
+    try:
+        if not year or not search_id_first_class:
+            raise HTTPException(status_code=400, detail="Invalid input: year and table are required")
+        result = con.sql(f"SELECT * FROM {table_records} WHERE Anio={year} AND {id_first_class} = {search_id_first_class};").fetchall()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")

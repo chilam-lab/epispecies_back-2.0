@@ -60,6 +60,7 @@ ESTADO_MUN {
 ENFERMEDAD {
     int id_enfermedad PK
     int CVE_Enfermedad FK
+    string Enfermedad
     int CVE_Grupo FK
     string Grupo
     string CVE_Causa_def FK
