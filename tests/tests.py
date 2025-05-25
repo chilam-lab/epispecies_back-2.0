@@ -177,22 +177,35 @@ def test_get_second_class_missing_param(client):
     assert response.status_code == 422
     assert any(error["type"] == "missing" for error in response.json()["detail"])
 
+def test_get_third_class_no_data(client: TestClient):
+    env_vars = {
+        "ID_FIRST_CLASS": "CVE_Enfermedad",
+        "FIRST_CLASS_DESCRIPTION": "Enfermedad",
+        "ID_SECOND_CLASS": "CVE_Grupo",
+        "SECOND_CLASS_DESCRIPTION": "Grupo",
+        "TABLE_CLASS": "ENFERMEDADES"
+    }
+    with patch.dict(os.environ, env_vars):
+        response = client.get("/get_third_level_class?search_id_first_class=E1&search_id_second_class=G1")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1 
+        assert ["C1", "Cause1"] in data
+
 # Test for /get_third_class with no data
 def test_get_third_class_no_data(client: TestClient):
-    payload = {
-        "id_third_class": "CVE_Causa_def",
-        "third_class_description": "Causa_def",
-        "table": "ENFERMEDADES",
-        "where_column_name": "CVE_Grupo",
-        "where_column_name2": "CVE_Enfermedad",
-        "id_first_class": "E1",
-        "id_second_class": "invalid",
-        "orderedby": "Causa_def"
+    env_vars = {
+        "ID_FIRST_CLASS": "CVE_Enfermedad",
+        "FIRST_CLASS_DESCRIPTION": "Enfermedad",
+        "ID_SECOND_CLASS": "CVE_Grupo",
+        "SECOND_CLASS_DESCRIPTION": "Grupo",
+        "TABLE_CLASS": "ENFERMEDADES"
     }
-    response = client.post("/get_third_level_class", json=payload)
-    assert response.status_code == 200, f"Expected 200, got {response.status_code}. Response: {response.text}"
-    assert response.json() == {"message": "No data found"}, f"Expected 'No data found', got {response.json()}"
+    with patch.dict(os.environ, env_vars):
+        response = client.get("/get_third_level_class?search_id_first_class=E1&search_id_second_class=Invalid")
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}. Response: {response.text}"
+        assert response.json() == {"message": "No data found"}, f"Expected 'No data found', got {response.json()}"
 def test_get_third_class_missing_params(client: TestClient):
-    response = client.post("/get_third_level_class")
+    response = client.get("/get_third_level_class")
     assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
     assert any(error["type"] == "missing" for error in response.json()["detail"]), "Expected 'missing' error type"

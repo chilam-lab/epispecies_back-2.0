@@ -189,28 +189,18 @@ async def get_second_class_list(search_id_first_class:str, con: DuckDBConn = Dep
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-class ThirdLevelClassRequest(BaseModel):
-    id_third_class: str
-    third_class_description: str
-    table: str
-    where_column_name: str
-    where_column_name2: str
-    id_first_class: str
-    id_second_class: str
-    orderedby: str
-
-@app.post("/get_third_level_class")
-async def get_third_class_list(request: ThirdLevelClassRequest, con: DuckDBConn = Depends(get_db)):
+@app.get("/get_third_level_class")
+async def get_third_class_list(search_id_first_class: str, search_id_second_class: str , con: DuckDBConn = Depends(get_db)):
     try:
-        if not request.id_first_class or not request.id_second_class or not request.orderedby:
+        if not search_id_first_class or not search_id_second_class:
             raise HTTPException(status_code=400, detail="Invalid input: id_first_class, id_second_class, and orderedby are required")
         
         result = con.sql(f"""
-            SELECT DISTINCT {request.id_third_class}, {request.third_class_description}
-            FROM {request.table}
-            WHERE {request.where_column_name} = ? AND {request.where_column_name2} = ?
-            ORDER BY {request.orderedby}
-        """, params=[request.id_second_class, request.id_first_class]).fetchall()
+            SELECT DISTINCT {id_third_class}, {third_class_description}
+            FROM {table_class}
+            WHERE {id_first_class} = ? AND {id_second_class} = ?
+            ORDER BY {third_class_description}
+        """, params=[search_id_first_class, search_id_second_class]).fetchall()
         
         return result if result else {"message": "No data found"}
     except Exception as e:
