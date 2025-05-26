@@ -147,7 +147,7 @@ async def create_table(con: DuckDBConn = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error creating table: {str(e)}")
 
 @app.get("/show/tables")
-async def lists2(con: DuckDBConn = Depends(get_db)):
+async def show_tables(con: DuckDBConn = Depends(get_db)):
     try:
         tables = con.sql("SHOW TABLES")
         result = tables.to_df().to_dict(orient="records")
@@ -165,7 +165,7 @@ async def get_columns(table_name:str, con: DuckDBConn = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/unique_pair_columns")
-async def get_unique_columns(column1: str, column2: str, table: str, con: DuckDBConn = Depends(get_db)):
+async def get_unique_pair_columns(column1: str, column2: str, table: str, con: DuckDBConn = Depends(get_db)):
     try:
         result = con.sql(f"SELECT DISTINCT {column1}, {column2} FROM {table};").fetchall()
         return result
@@ -218,7 +218,7 @@ async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_d
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/records_by_year_by_column")
-async def get_records_year(year: str, search_id_first_class:str, con: DuckDBConn = Depends(get_db)):
+async def get_records_year_by_coulmn(year: str, search_id_first_class:str, con: DuckDBConn = Depends(get_db)):
     try:
         if not year or not search_id_first_class:
             raise HTTPException(status_code=400, detail="Invalid input: year and table are required")
@@ -228,7 +228,7 @@ async def get_records_year(year: str, search_id_first_class:str, con: DuckDBConn
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/unique_values_by_column")
-async def get_unique_values(column_name: str, table:str, con: DuckDBConn = Depends(get_db)):
+async def get_unique_values_by_column(column_name: str, table:str, con: DuckDBConn = Depends(get_db)):
     try:
         if not column_name or not table:
             raise HTTPException(status_code=400, detail="Invalid input: column_name and table are required")
@@ -238,7 +238,7 @@ async def get_unique_values(column_name: str, table:str, con: DuckDBConn = Depen
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.get("/get_all_by_table")
-async def get_unique_values(table:str, con: DuckDBConn = Depends(get_db)):
+async def get_all_the_values(table:str, con: DuckDBConn = Depends(get_db)):
     try:
         if not table:
             raise HTTPException(status_code=400, detail="Invalid input: column_name and table are required")
