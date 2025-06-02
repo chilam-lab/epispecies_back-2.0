@@ -111,12 +111,12 @@ async def create_table(con: DuckDBConn = Depends(get_db)):
     try:
         first_chunk = True
         db_dir = "db"
+        name_of_cleaned_file = "cleaned_table_file.csv"
+        csv_cleaned_name = join(db_dir, name_of_cleaned_file)
         for file in listdir("db/"):
             #First, we check for .csv files that area not cleaned
             if file.endswith(".csv") and not file.startswith("cleaned_"):
                 csv_file_dir = join(db_dir, file)
-                name_of_cleaned_file = "cleaned_table_file.csv"
-                csv_cleaned_name = join(db_dir, name_of_cleaned_file)
                 #If the file cleaned_file does not exist, we clean and create it
                 if not isfile(csv_cleaned_name):
                     clean_csv_in_chunks(first_chunk, csv_file_dir, csv_cleaned_name)
@@ -130,21 +130,41 @@ async def create_table(con: DuckDBConn = Depends(get_db)):
                         TO 'db/deaths.parquet' (FORMAT PARQUET);""")
                 con.sql("""CREATE OR REPLACE TABLE deaths AS SELECT * FROM 'db/deaths.parquet';""")
                 #Finally, we lower all column names for ease of access
-                table_name = "deaths"
-                columns = con.sql(f"SELECT * FROM {table_name}").columns
-                for column in columns:
-                    if isinstance(column, str):
-                        temp_column_name = column
-                        column_name_lower = temp_column_name.lower()
-                        if (temp_column_name != column_name_lower):
-                            con.sql(f"""ALTER TABLE {table_name} RENAME COLUMN {temp_column_name} TO 
-                                    {column_name_lower}""")
+                #table_name = "deaths"
+                #columns = con.sql(f"SELECT * FROM {table_name}").columns
+                #for column in columns:
+                 #   if isinstance(column, str):
+                  #      temp_column_name = column
+                   #     column_name_lower = temp_column_name.lower()
+                    #    if (temp_column_name != column_name_lower):
+                     #       con.sql(f"""ALTER TABLE {table_name} RENAME COLUMN {temp_column_name} TO 
+                      #              {column_name_lower}""")
                 if first_chunk:
                     first_chunk = False
                 con.close()
                 return {"status": "Table created from Parquet"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating table: {str(e)}")
+
+@app.get("/clean/columns_to_lower_case")
+async def columns_to_lower_case(table_name: str, con: DuckDBConn = Depends(get_db)):
+    try:
+        columns_to_lower = con.sql(f"SELECT * FROM {table_name}").columns
+        for column in columns_to_lower:
+            if isinstance(column, str):
+                temp_column_name = column
+                column_name_lower = temp_column_name.lower()
+                if (temp_column_name != column_name_lower):
+                    con.sql(f"""ALTER TABLE {table_name} RENAME COLUMN {temp_column_name} TO 
+                            {column_name_lower}""")
+        result = con.sql(f"SELECT * FROM {table_name}").columns
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
+
+#@app.get("/clean/clean_encoding_csv")
+#async def clean_csv(List[str], con: DuckDBConn = Depends(get_db)):
+ #   try:
 
 @app.get("/show/tables")
 async def show_tables(con: DuckDBConn = Depends(get_db)):
