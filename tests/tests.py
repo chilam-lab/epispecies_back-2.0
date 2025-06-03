@@ -226,3 +226,40 @@ def test_get_third_class_missing_params(client: TestClient):
     response = client.get("/get_third_level_class")
     assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
     assert any(error["type"] == "missing" for error in response.json()["detail"]), "Expected 'missing' error type"
+
+
+def test_upload_csv(client: TestClient):
+    csv_content = "id,name,cve,description\n1,test,10,Otras formas de enfermedad del corazon"
+    response = client.post(
+        "/up",
+        files={"file": ("test.csv", csv_content, "text/csv")}
+    )
+    assert response.status_code == 200
+
+
+# limpiar modificado
+# Lea el archivo dentro de db y que regrese estatus 200
+# .
+# .
+# .
+# mock de un archivo pequeño
+# leear el archivo de mock
+# verificar que guardar en la nueva carpeta
+# verificar que el encoding del archivo limpiado es correcto
+# en el caso de que la bandera sea falsa, verificar que no se guarda el archivo
+# y que más bien regrese el archivo con el encoding
+
+
+
+
+# limpiar sin modificar
+# mock de un archivo pequeño
+# leear el archivo de mock
+# verificar que guardar en la nueva carpeta
+# verificar que el encoding del archivo limpiado es correcto
+
+# limpiar2
+# mock de un archivo pequeño
+# leear el archivo de mock
+# verificar que no se guarda el archivo
+# y que más bien regrese el archivo con el encoding
