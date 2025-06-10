@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import contextmanager
 from typing import Generator
@@ -8,6 +8,8 @@ import os
 from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
+import csv
+from io import StringIO
 
 from os import listdir, remove
 from os.path import isfile, join, splitext, exists
@@ -304,3 +306,113 @@ async def get_all_the_values(table:str, con: DuckDBConn = Depends(get_db)):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+# endpoint que vamos a exponer- 
+@app.post("/up")
+async def upload_csv(file: UploadFile = File(...)):
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only csv files allowed")
+    try:
+        contents = await file.read()
+        csv_string = contents.decode('utf-8')
+        csv_reader = csv.DictReader(StringIO(csv_string))
+        rows = list(csv_reader)
+        return contents
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+
+
+
+
+# nuestro lado
+# function create -> tiene dentro la funcion que limpia los csv
+# .   la funcion de clean _> guarda directamente los csv dentro de la carpeta db
+#
+
+
+#El endpoint que vamos a exponer
+# necesitamos crear un endpoint que lea el csv
+# que unicamente lo descodifique
+# y que regrese la respuesta
+
+
+
+# lo primero es crear un endpoint que lea un archivo-
+# y lo siguente es que lo decodifique con el encoding 
+# Y finalmente que lo regrese descodificado
+
+
+# crear una funcion 
+
+
+
+
+# un clean function que guarda directamente los datos en db
+# 
+
+
+
+---
+# clean function
+#Orientado a guardar los datos dentro del db
+
+1- modificar el clean para que solo limpie y crear otra funcion y la mandas a llamar para guardar
+para guardar el archivo en db. necesita una bandera para que sepa distinguir si la guarda o no
+
+
+---
+1. Hacer que la funcion de clean tome todos lo archivos y lo unique en uno solo, solo leeriamos de un solo
+archivo ya limpiado
+
+2. Tener varios archivos, pero hacer que la funcion solo los limpie y los guarde con los archivos con
+una nomenglatura:  'cleaned_'
+
+3. Hacer que la funcion limpie los archivos pero que los guarde en una carpeta 'cleaned_db/', y aqui
+le decimos a duckdb que lea todos los archivos de la carpeta 'cleaned_db/'
+
+---
+
+3. Hacer que la funcion limpie los archivos pero que los guarde en una carpeta 'cleaned_db/', y aqui
+le decimos a duckdb que lea todos los archivos de la carpeta 'cleaned_db/'
+
+'cleaned_db/' -> archivos limpios
+
+#---->
+#/create
+#llimpia(true)
+
+#/updaload
+#llimpia(false)
+
+
+#function limpia(banderaGuardar,archivo...){
+#if banderaGuardar
+#    ir a db y guardar el archivo que acaba de limpiar
+#else
+#    return el archivo modificado
+#}
+#----->
+
+#/upload
+#respuesta = limpiar2(archivo)
+#return respuesta
+
+#limpiar2(archivo)
+#    leer con el encoding
+#    return archivo
+
+#---->
+
+
+# funcion -orientada no aguardar sino a solo limpiar-
+
+
+
+#clean coomo esta y . crear otra funcion que solo se dedique a limpiar
+
+
+
+
