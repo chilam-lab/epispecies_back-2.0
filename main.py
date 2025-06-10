@@ -156,11 +156,9 @@ async def clean_csv():
         csvs_dir = "csv"
         dir_clean_csv = "cleanedCSV/"
         for file in listdir("csv/"):
-            #First, we check for .csv files that are not cleaned
             if file.endswith(".csv"):
                 csv_file_dir = join(csvs_dir, file)
                 name_of_cleaned_file = join(dir_clean_csv, file)
-                #If the file cleaned_file does not exist, we clean and create it
                 if exists(name_of_cleaned_file):
                     remove(name_of_cleaned_file)
                 clean_csv_in_chunks(csv_file_dir, name_of_cleaned_file)
@@ -179,11 +177,8 @@ async def create_csv_table_file():
         if exists(csv_to_table):
             remove(csv_to_table)
         for file in listdir("cleanedCSV/"):
-            #First, we check for .csv files that are not cleaned
             if file.endswith(".csv"):
                 csv_file_dir = join(dir_clean_csv, file)
-                #If the file cleaned_file does not exist, we clean and create it
-                
                 create_csv_from_cleaned(first_chunk, csv_file_dir, csv_to_table)
                 first_chunk = False
         return {"status": "Succesfully create table from the cleanedCSV directory. Now you can create a table with the create_table endpoint."}
@@ -355,30 +350,30 @@ async def upload_csv(file: UploadFile = File(...)):
 
 
 
----
+#---
 # clean function
 #Orientado a guardar los datos dentro del db
 
-1- modificar el clean para que solo limpie y crear otra funcion y la mandas a llamar para guardar
-para guardar el archivo en db. necesita una bandera para que sepa distinguir si la guarda o no
+#1- modificar el clean para que solo limpie y crear otra funcion y la mandas a llamar para guardar
+#para guardar el archivo en db. necesita una bandera para que sepa distinguir si la guarda o no
 
 
----
-1. Hacer que la funcion de clean tome todos lo archivos y lo unique en uno solo, solo leeriamos de un solo
-archivo ya limpiado
+#---
+#1. Hacer que la funcion de clean tome todos lo archivos y lo unique en uno solo, solo leeriamos de un solo
+#archivo ya limpiado
 
-2. Tener varios archivos, pero hacer que la funcion solo los limpie y los guarde con los archivos con
-una nomenglatura:  'cleaned_'
+#2. Tener varios archivos, pero hacer que la funcion solo los limpie y los guarde con los archivos con
+#una nomenglatura:  'cleaned_'
 
-3. Hacer que la funcion limpie los archivos pero que los guarde en una carpeta 'cleaned_db/', y aqui
-le decimos a duckdb que lea todos los archivos de la carpeta 'cleaned_db/'
+#3. Hacer que la funcion limpie los archivos pero que los guarde en una carpeta 'cleaned_db/', y aqui
+#le decimos a duckdb que lea todos los archivos de la carpeta 'cleaned_db/'
 
----
+#---
 
-3. Hacer que la funcion limpie los archivos pero que los guarde en una carpeta 'cleaned_db/', y aqui
-le decimos a duckdb que lea todos los archivos de la carpeta 'cleaned_db/'
+#3. Hacer que la funcion limpie los archivos pero que los guarde en una carpeta 'cleaned_db/', y aqui
+#le decimos a duckdb que lea todos los archivos de la carpeta 'cleaned_db/'
 
-'cleaned_db/' -> archivos limpios
+#'cleaned_db/' -> archivos limpios
 
 #---->
 #/create
