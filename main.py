@@ -3,14 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import contextmanager
 from typing import Generator
 from fastapi.encoders import jsonable_encoder
-from services.clean_csv import clean_csv_in_chunks
+from services.clean_csv import clean_csv_in_chunks, create_csv_from_cleaned
 import os
 from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
 
-from os import listdir
-from os.path import isfile, join, splitext
+from os import listdir, remove
+from os.path import isfile, join, splitext, exists
 import duckdb
 
 load_dotenv()
@@ -93,8 +93,8 @@ def init_db():
 @app.on_event("startup")
 async def startup_event():
     global db_connection
-    db_connection = duckdb.connect("db/my_database.db")
-    init_db()
+    db_connection = duckdb.connect("app/db/my_database.db")
+    #init_db()
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -109,26 +109,28 @@ async def root(con: DuckDBConn = Depends(get_db)):
 @app.get("/create")
 async def create_table(con: DuckDBConn = Depends(get_db)):
     try:
-        first_chunk = True
-        db_dir = "db"
-        name_of_cleaned_file = "cleaned_table_file.csv"
-        csv_cleaned_name = join(db_dir, name_of_cleaned_file)
-        for file in listdir("db/"):
+     #   first_chunk = True
+      #  db_dir = "db"
+       # name_of_cleaned_file = ""
+       # dir_clean_csv = "cleanedCSV/"
+       # csv_cleaned_name = join(db_dir, name_of_cleaned_file)
+        #for file in listdir("db/"):
             #First, we check for .csv files that area not cleaned
-            if file.endswith(".csv") and not file.startswith("cleaned_"):
-                csv_file_dir = join(db_dir, file)
+         #   if file.endswith(".csv") and not file.startswith("cleaned_"):
+          #      csv_file_dir = join(db_dir, file)
+           #     name_of_cleaned_file = join('db/cleaned_', file)
                 #If the file cleaned_file does not exist, we clean and create it
-                if not isfile(csv_cleaned_name):
-                    clean_csv_in_chunks(first_chunk, csv_file_dir, csv_cleaned_name)
+           #     if isfile((join(dir_clean_csv, 'clean_table_file-csv'))):
+            #        clean_csv_in_chunks(first_chunk, csv_file_dir, csv_cleaned_name)
                 #We create the table
                 con.sql(f"""
                         CREATE OR REPLACE TABLE deaths AS
-                        SELECT * FROM read_csv_auto('{csv_cleaned_name}',
+                        SELECT * FROM read_csv_auto('cleanedCSV/csv_to_table_file.csv',
                         auto_detect=true, header=true);""")
                 con.sql(f"""
-                        COPY (SELECT * FROM read_csv_auto('{csv_cleaned_name}', auto_detect=true, header=true))
-                        TO 'db/deaths.parquet' (FORMAT PARQUET);""")
-                con.sql("""CREATE OR REPLACE TABLE deaths AS SELECT * FROM 'db/deaths.parquet';""")
+                        COPY (SELECT * FROM read_csv_auto('cleanedCSV/csv_to_table_file.csv', auto_detect=true, header=true))
+                        TO 'app/db/deaths.parquet' (FORMAT PARQUET);""")
+                con.sql("""CREATE OR REPLACE TABLE deaths AS SELECT * FROM 'app/db/deaths.parquet';""")
                 #Finally, we lower all column names for ease of access
                 #table_name = "deaths"
                 #columns = con.sql(f"SELECT * FROM {table_name}").columns
@@ -139,10 +141,50 @@ async def create_table(con: DuckDBConn = Depends(get_db)):
                     #    if (temp_column_name != column_name_lower):
                      #       con.sql(f"""ALTER TABLE {table_name} RENAME COLUMN {temp_column_name} TO 
                       #              {column_name_lower}""")
-                if first_chunk:
-                    first_chunk = False
+                #if first_chunk:
+                  #  first_chunk = False
                 con.close()
                 return {"status": "Table created from Parquet"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating table: {str(e)}")
+
+@app.get("/clean/clean_csv")
+async def clean_csv():
+    try:
+        csvs_dir = "csv"
+        dir_clean_csv = "cleanedCSV/"
+        for file in listdir("csv/"):
+            #First, we check for .csv files that are not cleaned
+            if file.endswith(".csv"):
+                csv_file_dir = join(csvs_dir, file)
+                name_of_cleaned_file = join(dir_clean_csv, file)
+                #If the file cleaned_file does not exist, we clean and create it
+                if exists(name_of_cleaned_file):
+                    remove(name_of_cleaned_file)
+                clean_csv_in_chunks(csv_file_dir, name_of_cleaned_file)
+        return {"status": "Succesfully cleaned csvs. You can check them in the cleneadCSV directory."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating table: {str(e)}")
+
+
+@app.get("/clean/create_csv_table_file")
+async def create_csv_table_file():
+    try:
+        first_chunk = True
+        csv_file_dir = ""
+        dir_clean_csv = "cleanedCSV"
+        csv_to_table = join(dir_clean_csv, "csv_to_table_file.csv")        
+        if exists(csv_to_table):
+            remove(csv_to_table)
+        for file in listdir("cleanedCSV/"):
+            #First, we check for .csv files that are not cleaned
+            if file.endswith(".csv"):
+                csv_file_dir = join(dir_clean_csv, file)
+                #If the file cleaned_file does not exist, we clean and create it
+                
+                create_csv_from_cleaned(first_chunk, csv_file_dir, csv_to_table)
+                first_chunk = False
+        return {"status": "Succesfully create table from the cleanedCSV directory. Now you can create a table with the create_table endpoint."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating table: {str(e)}")
 
@@ -161,10 +203,6 @@ async def columns_to_lower_case(table_name: str, con: DuckDBConn = Depends(get_d
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
-
-#@app.get("/clean/clean_encoding_csv")
-#async def clean_csv(List[str], con: DuckDBConn = Depends(get_db)):
- #   try:
 
 @app.get("/show/tables")
 async def show_tables(con: DuckDBConn = Depends(get_db)):
