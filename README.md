@@ -57,7 +57,7 @@ ESTADO_MUN {
     string municipio
 }
 
-ENFERMEDAD {
+ENFERMEDADES {
     int id_enfermedad PK
     int CVE_Enfermedad FK
     string Enfermedad
@@ -85,7 +85,7 @@ METROPOLI {
     string CVE_Metropoli FK
     string Metropolis
 }
-RAWDATA ||--|| ENFERMEDAD: "hecha desde"
+RAWDATA ||--|| ENFERMEDADES: "hecha desde"
 RAWDATA ||--|| ESTADO_MUN: "hecha desde"
 RAWDATA ||--|| DEFUNCIONES: "hecha desde"
 RAWDATA ||--|| METROPOLI: "hecha desde"
