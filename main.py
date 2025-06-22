@@ -167,7 +167,7 @@ async def get_columns(table_name:str, con: DuckDBConn = Depends(get_db)):
 @app.get("/unique_pair_columns")
 async def get_unique_pair_columns(column1: str, column2: str, table: str, con: DuckDBConn = Depends(get_db)):
     try:
-        result = con.sql(f"SELECT DISTINCT {column1}, {column2} FROM {table};").fetchall()
+        result = con.sql(f"SELECT DISTINCT {column1}, {column2} FROM {table} ORDER BY {column2};").fetchall()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
