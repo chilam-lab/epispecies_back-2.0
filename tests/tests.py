@@ -8,6 +8,9 @@ from main import app, get_db
 from fastapi import HTTPException
 from unittest.mock import patch
 import json
+from unittest.mock import mock_open, patch
+import chardet
+from services.clean_csv import detect_encoding
 
 # Fixture for in-memory DuckDB database
 @pytest.fixture
@@ -236,6 +239,15 @@ def test_upload_csv(client: TestClient):
     )
     assert response.status_code == 200
 
+def test_check_encoding():
+    file_content = "Hola Mundo"
+    chardet_result = {"encoding": "utf-8", "confidence": 0.99}
+    with patch("builtins.open", mock_open(read_data= file_content)):
+        with patch("chardet.detect", return_value= chardet_result):
+            encoding, confidence = detect_encoding("dummy_file.txt", sample_size=1000)
+    assert encoding == "utf-8"
+    assert confidence == 0.99
+    assert chardet.detect.called_with(file_content)
 
 # limpiar modificado
 # Lea el archivo dentro de db y que regrese estatus 200
