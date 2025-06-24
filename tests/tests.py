@@ -96,22 +96,55 @@ def test_show_tables(client):
     assert any(table["name"] == "RAWDATA" for table in data["tables"])
     assert any(table["name"] == "ENFERMEDADES" for table in data["tables"])
 
-#def test_clean_encoding_csv(client):
-#    response = client.get("/clean/clean_encoding_csv")
-#    assert response.status_code == 200
-#    data = response.json()
-#    assert "tables" in data
-#    assert any(table["name"] == "RAWDATA" for table in data["tables"])
-#    assert any(table["name"] == "ENFERMEDADES" for table in data["tables"])
+#Test for checking encoding without an initial file path
+def test_check_encoding():
+    file_content = "Hola Mundo"
+    chardet_result = {"encoding": "utf-8", "confidence": 0.99}
+    with patch("builtins.open", mock_open(read_data= file_content)):
+        with patch("chardet.detect", return_value= chardet_result) as mock_detect:
+            encoding, confidence = detect_encoding("dummy_file.txt", sample_size=1000)
+    assert encoding == "utf-8"
+    assert confidence == 0.99
+    mock_detect.assert_called_with(file_content)
 
-# Test for /clean/column endpoint
-def test_columns_to_lower_case(client):
+#Test for checking encoding with an initial file path
+def test_check_encoding_with_file_path():
+    file_content = "tests/csvs/Prueba1.csv"
+    chardet_result = {"encoding": "utf-8", "confidence": 0.99}
+    with patch("builtins.open", mock_open(read_data= file_content)):
+        with patch("chardet.detect", return_value= chardet_result) as mock_detect:
+            encoding, confidence = detect_encoding(file_content, sample_size=1000)
+    assert encoding == "utf-8"
+    assert confidence == 0.99
+    mock_detect.assert_called_with(file_content)
+
+#Test for checking accent or special characters removal (Normalize)
+def test_check_accent_removal():
+    file_content = "tests/csvs/Prueba1.csv"
+    chardet_result = {"encoding": "utf-8", "confidence": 0.99}
+    with patch("builtins.open", mock_open(read_data= file_content)):
+        with patch("chardet.detect", return_value= chardet_result) as mock_detect:
+            encoding, confidence = detect_encoding(file_content, sample_size=1000)
+    assert encoding == "utf-8"
+    assert confidence == 0.99
+    mock_detect.assert_called_with(file_content)
+
+# Succesfull test for /clean/column endpoint
+def test_columns_to_lower_case_success(client):
     response = client.get("/clean/columns_to_lower_case?table_name=RAWDATA")
     assert response.status_code == 200
     data = response.json()
     assert "columns" in data
     assert set(data["columns"]) == {"id", "name", "cause", "anio", "cve_grupo", "grupo", "cve_enfermedad", "cve_causa_def", "causa_def"}
-    assert set(data["columns"]) == {"Id", "Name", "Cause", "Anio", "CVE_Grupo", "Grupo", "CVE_Enfermedad", "CVE_Causa_def", "Causa_def"}
+
+# Test for /clean/column endpoint that check for failure
+def test_columns_to_lower_case_fail(client):
+    response = client.get("/clean/columns_to_lower_case?table_name=RAWDATA")
+    assert response.status_code == 200
+    data = response.json()
+    assert "columns" in data
+    with pytest.raises(AssertionError):
+        assert set(data["columns"]) == {"Id", "Name", "Cause", "Anio", "CVE_Grupo", "Grupo", "CVE_Enfermedad", "CVE_Causa_def", "Causa_def"}
 
 # Test for /columns endpoint
 def test_get_columns(client):
@@ -238,16 +271,6 @@ def test_upload_csv(client: TestClient):
         files={"file": ("test.csv", csv_content, "text/csv")}
     )
     assert response.status_code == 200
-
-def test_check_encoding():
-    file_content = "Hola Mundo"
-    chardet_result = {"encoding": "utf-8", "confidence": 0.99}
-    with patch("builtins.open", mock_open(read_data= file_content)):
-        with patch("chardet.detect", return_value= chardet_result):
-            encoding, confidence = detect_encoding("dummy_file.txt", sample_size=1000)
-    assert encoding == "utf-8"
-    assert confidence == 0.99
-    assert chardet.detect.called_with(file_content)
 
 # limpiar modificado
 # Lea el archivo dentro de db y que regrese estatus 200

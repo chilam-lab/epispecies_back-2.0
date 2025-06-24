@@ -197,7 +197,7 @@ async def columns_to_lower_case(table_name: str, con: DuckDBConn = Depends(get_d
                     con.sql(f"""ALTER TABLE {table_name} RENAME COLUMN {temp_column_name} TO 
                             {column_name_lower}""")
         result = con.sql(f"SELECT * FROM {table_name}").columns
-        return result
+        return jsonable_encoder({"columns": result})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
