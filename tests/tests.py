@@ -10,7 +10,7 @@ from unittest.mock import patch
 import json
 from unittest.mock import mock_open, patch
 import chardet
-from services.clean_csv import detect_encoding
+from services.clean_csv import detect_encoding, normalize
 
 # Fixture for in-memory DuckDB database
 @pytest.fixture
@@ -120,14 +120,16 @@ def test_check_encoding_with_file_path():
 
 #Test for checking accent or special characters removal (Normalize)
 def test_check_accent_removal():
-    file_content = "tests/csvs/Prueba1.csv"
-    chardet_result = {"encoding": "utf-8", "confidence": 0.99}
-    with patch("builtins.open", mock_open(read_data= file_content)):
-        with patch("chardet.detect", return_value= chardet_result) as mock_detect:
-            encoding, confidence = detect_encoding(file_content, sample_size=1000)
-    assert encoding == "utf-8"
-    assert confidence == 0.99
-    mock_detect.assert_called_with(file_content)
+    string_to_check = "Corazón"
+    string_converted = normalize(string_to_check)
+    assert string_converted == "Corazon"
+
+#Test for checking accent or special characters removal (Normalize) fialure
+def test_check_accent_removal_fail():
+    string_to_check = "Corazón"
+    string_converted = normalize(string_to_check)
+    with pytest.raises(AssertionError):
+        assert string_converted == "Corazón"
 
 # Succesfull test for /clean/column endpoint
 def test_columns_to_lower_case_success(client):
