@@ -56,7 +56,8 @@ def init_db():
         if not os.path.exists('db/cleaned_file.csv'):
             clean_csv_in_chunks('db/def00_19_v2.csv', 'db/cleaned_file.csv')
         db_connection.sql("""
-            COPY (SELECT * FROM read_csv_auto('db/cleaned_file.csv', auto_detect=true, header=true))
+            COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
+            FROM read_csv_auto('db/cleaned_file.csv', auto_detect=true, header=true))
             TO 'db/RAWDATA.parquet' (FORMAT PARQUET);
         """)
         db_connection.sql("""
@@ -72,12 +73,12 @@ def init_db():
         db_connection.sql("""
             CREATE OR REPLACE TABLE DEFUNCIONES AS
             SELECT CVE_Enfermedad, CVE_Grupo, CVE_Causa_def, CVE_Estado,
-            CVEGEO, CVE_Metropoli, Ambito, Sexo, Edad_gpo, Ocupacion, Escolaridad, Edo_civil, Anio
+            CAST(CVEGEO AS VARCHAR) AS CVEGEO, CVE_Metropoli, Ambito, Sexo, Edad_gpo, Ocupacion, Escolaridad, Edo_civil, Anio
             FROM RAWDATA;
         """)
         db_connection.sql("""
             CREATE OR REPLACE TABLE ESTADO_MUN AS
-            SELECT DISTINCT CVE_Estado, Estado, CVEGEO, Municipio
+            SELECT DISTINCT CVE_Estado, Estado, CAST(CVEGEO AS VARCHAR) AS CVEGEO, Municipio
             FROM RAWDATA;
         """)
         db_connection.sql("""
