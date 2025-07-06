@@ -1,9 +1,9 @@
-from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import contextmanager
 from typing import Generator
 from fastapi.encoders import jsonable_encoder
-from services.clean_csv import clean_csv_in_chunks, create_csv_from_cleaned
+from services.clean_csv import clean_csv_in_chunks, create_csv_from_cleaned, clean_csv_for_download
 import os
 from pydantic import BaseModel
 from typing import Optional
@@ -309,11 +309,14 @@ async def upload_csv(file: UploadFile = File(...)):
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only csv files allowed")
     try:
-        contents = await file.read()
-        csv_string = contents.decode('utf-8')
-        csv_reader = csv.DictReader(StringIO(csv_string))
-        rows = list(csv_reader)
-        return contents
+        file_to_download = StringIO(newline="")
+        clean_csv_for_download(file.file, file_to_download)
+        download_file_name = "cleaned_" + file.filename
+        res = Response(file_to_download.getvalue(), headers={'Content-Disposition': 
+                                                      'attachment;filename=' + download_file_name},
+                                                      media_type="text/csv")
+        file_to_download.close()
+        return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
