@@ -1,5 +1,7 @@
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, Response
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.background import BackgroundTasks
 from contextlib import contextmanager
 from typing import Generator
 from fastapi.encoders import jsonable_encoder
@@ -10,6 +12,7 @@ from typing import Optional
 from dotenv import load_dotenv
 import csv
 from io import StringIO
+import tempfile
 
 from os import listdir, remove
 from os.path import isfile, join, splitext, exists
@@ -303,20 +306,32 @@ async def get_all_the_values(table:str, con: DuckDBConn = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+def delete_tmp_file(path: str) -> None:
+    os.unlink(path)
+
 # endpoint que vamos a exponer- 
 @app.post("/up")
 async def upload_csv(file: UploadFile = File(...)):
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only csv files allowed")
     try:
-        file_to_download = StringIO(newline="")
-        clean_csv_for_download(file.file, file_to_download)
         download_file_name = "cleaned_" + file.filename
-        res = Response(file_to_download.getvalue(), headers={'Content-Disposition': 
-                                                      'attachment;filename=' + download_file_name},
-                                                      media_type="text/csv")
-        file_to_download.close()
-        return res
+        tmp_file, path = tempfile.mkstemp(suffix=".csv", text=True)
+        with os.fdopen(tmp_file, "w+", encoding="utf-8", newline="") as f:
+            clean_csv_in_chunks(input_path=file.file, output_path=f)
+            f.seek(0)
+            print(f.read())
+        #with tempfile.NamedTemporaryFile(mode="w+t", suffix=".csv") as temp_fl:
+         #   clean_csv_in_chunks(input_path=file.file, output_path=temp_fl)
+        return FileResponse(path, media_type="text/csv", filename=download_file_name,
+                            background=BackgroundTasks().add_task(delete_tmp_file, path))
+        #file_to_download= tempfile.NamedTemporaryFile(mode="w+t", suffix=".csv")
+        #file_to_download = StringIO(newline="")
+        #clean_csv_for_download(file.file, file_to_download)
+        #res = Response(file_to_download.getvalue(), headers={'Content-Disposition': 
+        #                                              'attachment;filename=' + download_file_name},
+        #                                              media_type="text/csv")
+        #return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
