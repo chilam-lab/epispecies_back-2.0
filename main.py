@@ -1,5 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.background import BackgroundTasks
 from contextlib import contextmanager
@@ -309,22 +309,33 @@ async def get_all_the_values(table:str, con: DuckDBConn = Depends(get_db)):
 def delete_tmp_file(path: str) -> None:
     os.unlink(path)
 
+def iterfile(path):
+    with open(path, "r", encoding="utf-8", newline="") as f:
+        f.seek(0)
+        while chunk := f.read(1000000):
+            yield chunk
+        #f.seek(0)
+        #print(f.read())
+    
 # endpoint que vamos a exponer- 
 @app.post("/up")
 async def upload_csv(file: UploadFile = File(...)):
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only csv files allowed")
     try:
+        fd, path = tempfile.mkstemp(suffix=".csv", text=True)
         download_file_name = "cleaned_" + file.filename
-        tmp_file, path = tempfile.mkstemp(suffix=".csv", text=True)
-        with os.fdopen(tmp_file, "w+", encoding="utf-8", newline="") as f:
+        #tmp_file, path = tempfile.mkstemp(suffix=".csv", text=True)
+        with os.fdopen(fd, "w+", encoding="utf-8", newline="") as f:
             clean_csv_in_chunks(input_path=file.file, output_path=f)
-            f.seek(0)
-            print(f.read())
         #with tempfile.NamedTemporaryFile(mode="w+t", suffix=".csv") as temp_fl:
          #   clean_csv_in_chunks(input_path=file.file, output_path=temp_fl)
-        return FileResponse(path, media_type="text/csv", filename=download_file_name,
-                            background=BackgroundTasks().add_task(delete_tmp_file, path))
+        return StreamingResponse(iterfile(path), headers={'Content-Disposition':
+                                                        'attachment;filename=' + download_file_name},
+                                                        media_type="text/csv",
+                                                        background=BackgroundTasks().add_task(delete_tmp_file, path))
+        #return FileResponse(path, media_type="text/csv", filename=download_file_name,
+        #                    background=BackgroundTasks().add_task(delete_tmp_file, path))
         #file_to_download= tempfile.NamedTemporaryFile(mode="w+t", suffix=".csv")
         #file_to_download = StringIO(newline="")
         #clean_csv_for_download(file.file, file_to_download)
