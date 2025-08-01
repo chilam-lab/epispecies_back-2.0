@@ -1,7 +1,9 @@
-/db/*
+/app/db/*
 __pycache__/
 *.pyc
 *.pyo
 .DS_Store
 *.db
 env/*
+csv/*
+cleanedCSV/*
