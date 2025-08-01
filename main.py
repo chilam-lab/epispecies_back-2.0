@@ -310,10 +310,11 @@ def delete_tmp_file(path: str) -> None:
     os.unlink(path)
 
 def iterfile(path):
-    with open(path, "r", encoding="utf-8", newline="") as f:
-        f.seek(0)
-        while chunk := f.read(1000000):
-            yield chunk
+    with open(path, "r", encoding="utf-8", newline="", buffering= 1) as f:
+        yield from f
+        #f.seek(0)
+        #while chunk := f.read(1000000):
+        #    yield chunk
         #f.seek(0)
         #print(f.read())
     
@@ -326,16 +327,16 @@ async def upload_csv(file: UploadFile = File(...)):
         fd, path = tempfile.mkstemp(suffix=".csv", text=True)
         download_file_name = "cleaned_" + file.filename
         #tmp_file, path = tempfile.mkstemp(suffix=".csv", text=True)
-        with os.fdopen(fd, "w+", encoding="utf-8", newline="") as f:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
             clean_csv_in_chunks(input_path=file.file, output_path=f)
         #with tempfile.NamedTemporaryFile(mode="w+t", suffix=".csv") as temp_fl:
          #   clean_csv_in_chunks(input_path=file.file, output_path=temp_fl)
-        return StreamingResponse(iterfile(path), headers={'Content-Disposition':
-                                                        'attachment;filename=' + download_file_name},
-                                                        media_type="text/csv",
-                                                        background=BackgroundTasks().add_task(delete_tmp_file, path))
-        #return FileResponse(path, media_type="text/csv", filename=download_file_name,
-        #                    background=BackgroundTasks().add_task(delete_tmp_file, path))
+        #return StreamingResponse(iterfile(path), headers={'Content-Disposition':
+        #                                                'attachment;filename=' + download_file_name},
+        #                                                media_type="text/csv",
+        #                                                background=BackgroundTasks().add_task(delete_tmp_file, path))
+        return FileResponse(path, media_type="text/csv", filename=download_file_name,
+                            background=BackgroundTasks().add_task(delete_tmp_file, path))
         #file_to_download= tempfile.NamedTemporaryFile(mode="w+t", suffix=".csv")
         #file_to_download = StringIO(newline="")
         #clean_csv_for_download(file.file, file_to_download)

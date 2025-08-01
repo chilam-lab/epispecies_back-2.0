@@ -26,26 +26,40 @@ def clean_csv_in_chunks(input_path, output_path, chunk_size=100000):
     
     
     # Process in chunks
-    chunks = pd.read_csv(input_path, chunksize=chunk_size, encoding="utf-8", encoding_errors='replace',
-                        on_bad_lines='warn', dtype=str, engine='python', low_memory=True)
-    
-    # Write header to output file
     first_chunk = True
-    for i, chunk in enumerate(chunks):
-        # Clean chunk data
-        # 1. Remove control characters
-        for col in chunk.columns:
-            if chunk[col].dtype == 'object':
-                chunk[col].apply(lambda x: ''.join(ch for ch in str(x) if ord(ch) >= 32 or ch in '\n\r\t'))
+    chunk_no = 0
+    #chunks = pd.read_csv(input_path, chunksize=chunk_size, encoding="utf-8", encoding_errors='replace',
+    #                    on_bad_lines='warn', dtype=str, engine='python', low_memory=True)
+    
+    for chunk in pd.read_csv(input_path, chunksize=chunk_size, encoding="utf-8", encoding_errors='replace',
+                        on_bad_lines='warn', dtype=str, engine='python', low_memory=True):
         chunk.apply(lambda s: normalize(s))
-
-        # Write to output file
         mode = 'w' if first_chunk else 'a'
         chunk.to_csv(output_path, mode=mode, index=False, header=first_chunk, encoding='utf-8')
         first_chunk = False
+        print(f"Processed chunk {chunk_no+1} ({chunk_size * (chunk_no+1)} rows)")
+        chunk_no += 1
+
+
+
+    # Write header to output file
+    #first_chunk = True
+    #for i, chunk in enumerate(chunks):
+        # Clean chunk data
+        # 1. Remove control characters
+    #    for col in chunk.columns:
+    #        if chunk[col].dtype == 'object':
+    #            chunk[col].apply(lambda x: ''.join(ch for ch in str(x) if ord(ch) >= 32 or ch in '\n\r\t'))
+    #    chunk.apply(lambda s: normalize(s))
+
+        # Write to output file
+    #    mode = 'w' if first_chunk else 'a'
+    #    chunk.to_csv(output_path, mode=mode, index=False, header=first_chunk, encoding='utf-8')
+    #    first_chunk = False
         
         # Status update
-        print(f"Processed chunk {i+1} ({chunk_size * (i+1)} rows)")
+    #    print(f"Processed chunk {i+1} ({chunk_size * (i+1)} rows)")
+    #chunks.close()
 
 
 def clean_csv_for_download(input_path, strIO, chunk_size=100000):
