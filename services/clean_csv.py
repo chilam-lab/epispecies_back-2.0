@@ -1,9 +1,7 @@
 import pandas as pd
 import chardet
 from io import StringIO
-import os
 import unicodedata
-import csv
 
 def detect_encoding(file_path, sample_size=1000000):
     """Detect file encoding from a sample."""
@@ -19,11 +17,7 @@ def normalize(string_chunk):
     return string_chunk
 
 def clean_csv_in_chunks(input_path, output_path, chunk_size=100000):
-    """Clean CSV in chunks to handle large files."""
-    # First, detect encoding
-    #encoding, confidence = detect_encoding(input_path)
-    #print(f"Detected encoding: {encoding} with confidence: {confidence}")
-    
+    """Clean CSV in chunks to handle large files."""    
     # Process in chunks
     first_chunk = True
     chunk_no = 0    
