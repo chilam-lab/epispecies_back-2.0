@@ -11,7 +11,6 @@ from fastapi import HTTPException
 from unittest.mock import patch
 import json
 from unittest.mock import mock_open, patch
-import chardet
 from services.clean_csv import detect_encoding, normalize, clean_csv_in_chunks
 
 # Fixture for in-memory DuckDB database
@@ -71,23 +70,6 @@ def test_root(client):
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {"message": "Hello World"}
-
-# Test for /create endpoint (mocking clean_csv_in_chunks)
-# def test_create_table(client, in_memory_db, monkeypatch):
-#     def mock_clean_csv_in_chunks(input_file, output_file):
-#         # Simulate CSV cleaning by creating a dummy CSV
-#         with open(output_file, 'w') as f:
-#             f.write("id,name,cause\n1,John,Heart Disease\n")
-    
-#     monkeypatch.setattr("main.clean_csv_in_chunks", mock_clean_csv_in_chunks)
-    
-#     response = client.get("/create")
-#     assert response.status_code == 200
-#     assert response.json() == {"status": "Table created from Parquet"}
-    
-#     # Verify table exists
-#     tables = in_memory_db.sql("SHOW TABLES").fetchall()
-#     assert "deaths" in [row[0] for row in tables]
 
 # Test for /show endpoint
 def test_show_tables(client):
@@ -267,7 +249,6 @@ def test_get_third_class_missing_params(client: TestClient):
     assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
     assert any(error["type"] == "missing" for error in response.json()["detail"]), "Expected 'missing' error type"
 
-
 def test_upload_csv(client: TestClient):
     csv_content = "id,name,cve,description\n1,test,10,Otras formas de enfermedad del corazon"
     response = client.post(
@@ -286,63 +267,6 @@ def test_clean_csv_in_chunks(client):
     assert encoding == "utf-8"
     assert confidence == 0.99
     mock_detect.assert_called_with(file_content)
-
-'''
-@pytest.fixture
-def sample_csv_data():
-    """Create sample CSV data with various issues"""
-    data = {
-            'id': [1, 2, 3, 4, 5],
-            'name': ['John\x00', 'Jane\x01', 'Bob\x02', 'Alice', 'Charlie'],
-            'description': ['Good\x03person', 'Bad\x04data', 'Clean data', 'More\x05issues', 'Normal'],
-            'value': ['100', '200', '300', '400', '500']
-    }
-    return pd.DataFrame(data)
-
-@pytest.fixture
-def temp_files():
-    """Create temporary input and output files"""
-    input_file = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False)
-    output_file = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False)
-    input_file.close()
-    output_file.close()
-        
-    yield input_file.name, output_file.name
-        
-    # Cleanup
-    try:
-        os.unlink(input_file.name)
-        os.unlink(output_file.name)
-    except FileNotFoundError:
-        pass
-    
-def test_clean_csv_basic_functionality(sample_csv_data, temp_files, capsys):
-    """Test basic CSV cleaning functionality"""
-    input_path, output_path = temp_files
-        
-    # Write sample data to input file
-    sample_csv_data.to_csv(input_path, index=False, encoding='utf-8')
-        
-    #Mock detect_encoding
-    with patch('__main__.detect_encoding', return_value=('utf-8', 0.95)):
-        clean_csv_in_chunks(input_path, output_path, chunk_size=2)
-        
-    # Read the cleaned output
-    result_df = pd.read_csv(output_path, encoding='utf-8')
-        
-    # Verify the output
-    assert len(result_df) == 5
-    assert list(result_df.columns) == ['id', 'name', 'description', 'value']
-        
-    # Check that control characters were removed
-    assert '\x00' not in result_df['name'].iloc[0]
-    assert '\x01' not in result_df['name'].iloc[1]
-        
-    # Check console output
-    captured = capsys.readouterr()
-    assert "Detected encoding: utf-8 with confidence: 0.95" in captured.out
-    assert "Processed chunk" in captured.out
-'''
 
 def test_clean_csv_in_chunks(tmp_path, monkeypatch):
     """Test the clean_csv_in_chunks function with various scenarios."""
@@ -364,15 +288,10 @@ def test_clean_csv_in_chunks(tmp_path, monkeypatch):
         return 'utf-8', 0.95
 
     monkeypatch.setattr("services.clean_csv.detect_encoding", mock_detect_encoding)
-
     clean_csv_in_chunks(str(input_file), str(output_file), chunk_size=2)
-
     assert output_file.exists()
-
     output_df = pd.read_csv(output_file, encoding='utf-8')
-
     assert len(output_df) == 4
-
     expected_columns = ['id', 'name', 'description', 'year']
     assert list(output_df.columns) == expected_columns
 

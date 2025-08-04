@@ -10,7 +10,6 @@ import os
 from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
-import csv
 from io import StringIO
 import tempfile
 
@@ -61,7 +60,8 @@ def init_db():
         if not os.path.exists('db/cleaned_file.csv'):
             clean_csv_in_chunks('db/def00_19_v2.csv', 'db/cleaned_file.csv')
         db_connection.sql("""
-            COPY (SELECT * FROM read_csv_auto('db/cleaned_file.csv', auto_detect=true, header=true))
+            COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
+            FROM read_csv_auto('db/cleaned_file.csv', auto_detect=true, header=true))
             TO 'db/RAWDATA.parquet' (FORMAT PARQUET);
         """)
         db_connection.sql("""
@@ -77,12 +77,12 @@ def init_db():
         db_connection.sql("""
             CREATE OR REPLACE TABLE DEFUNCIONES AS
             SELECT CVE_Enfermedad, CVE_Grupo, CVE_Causa_def, CVE_Estado,
-            CVEGEO, CVE_Metropoli, Ambito, Sexo, Edad_gpo, Ocupacion, Escolaridad, Edo_civil, Anio
+            CAST(CVEGEO AS VARCHAR) AS CVEGEO, CVE_Metropoli, Ambito, Sexo, Edad_gpo, Ocupacion, Escolaridad, Edo_civil, Anio
             FROM RAWDATA;
         """)
         db_connection.sql("""
             CREATE OR REPLACE TABLE ESTADO_MUN AS
-            SELECT DISTINCT CVE_Estado, Estado, CVEGEO, Municipio
+            SELECT DISTINCT CVE_Estado, Estado, CAST(CVEGEO AS VARCHAR) AS CVEGEO, Municipio
             FROM RAWDATA;
         """)
         db_connection.sql("""
@@ -114,42 +114,16 @@ async def root(con: DuckDBConn = Depends(get_db)):
 @app.get("/create")
 async def create_table(con: DuckDBConn = Depends(get_db)):
     try:
-     #   first_chunk = True
-      #  db_dir = "db"
-       # name_of_cleaned_file = ""
-       # dir_clean_csv = "cleanedCSV/"
-       # csv_cleaned_name = join(db_dir, name_of_cleaned_file)
-        #for file in listdir("db/"):
-            #First, we check for .csv files that area not cleaned
-         #   if file.endswith(".csv") and not file.startswith("cleaned_"):
-          #      csv_file_dir = join(db_dir, file)
-           #     name_of_cleaned_file = join('db/cleaned_', file)
-                #If the file cleaned_file does not exist, we clean and create it
-           #     if isfile((join(dir_clean_csv, 'clean_table_file-csv'))):
-            #        clean_csv_in_chunks(first_chunk, csv_file_dir, csv_cleaned_name)
-                #We create the table
-                con.sql(f"""
-                        CREATE OR REPLACE TABLE deaths AS
-                        SELECT * FROM read_csv_auto('cleanedCSV/csv_to_table_file.csv',
-                        auto_detect=true, header=true);""")
-                con.sql(f"""
-                        COPY (SELECT * FROM read_csv_auto('cleanedCSV/csv_to_table_file.csv', auto_detect=true, header=true))
-                        TO 'app/db/deaths.parquet' (FORMAT PARQUET);""")
-                con.sql("""CREATE OR REPLACE TABLE deaths AS SELECT * FROM 'app/db/deaths.parquet';""")
-                #Finally, we lower all column names for ease of access
-                #table_name = "deaths"
-                #columns = con.sql(f"SELECT * FROM {table_name}").columns
-                #for column in columns:
-                 #   if isinstance(column, str):
-                  #      temp_column_name = column
-                   #     column_name_lower = temp_column_name.lower()
-                    #    if (temp_column_name != column_name_lower):
-                     #       con.sql(f"""ALTER TABLE {table_name} RENAME COLUMN {temp_column_name} TO 
-                      #              {column_name_lower}""")
-                #if first_chunk:
-                  #  first_chunk = False
-                con.close()
-                return {"status": "Table created from Parquet"}
+        con.sql(f"""
+                CREATE OR REPLACE TABLE deaths AS
+                SELECT * FROM read_csv_auto('cleanedCSV/csv_to_table_file.csv',
+                auto_detect=true, header=true);""")
+        con.sql(f"""
+                COPY (SELECT * FROM read_csv_auto('cleanedCSV/csv_to_table_file.csv', auto_detect=true, header=true))
+                TO 'app/db/deaths.parquet' (FORMAT PARQUET);""")
+        con.sql("""CREATE OR REPLACE TABLE deaths AS SELECT * FROM 'app/db/deaths.parquet';""")
+        con.close()
+        return {"status": "Table created from Parquet"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating table: {str(e)}")
 
@@ -225,7 +199,7 @@ async def get_columns(table_name:str, con: DuckDBConn = Depends(get_db)):
 @app.get("/unique_pair_columns")
 async def get_unique_pair_columns(column1: str, column2: str, table: str, con: DuckDBConn = Depends(get_db)):
     try:
-        result = con.sql(f"SELECT DISTINCT {column1}, {column2} FROM {table};").fetchall()
+        result = con.sql(f"SELECT DISTINCT {column1}, {column2} FROM {table} ORDER BY {column2};").fetchall()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
@@ -310,7 +284,7 @@ def delete_tmp_file(path: str) -> None:
     os.unlink(path)
     
 # EndPoint for cleaning a csv file and enable a download- 
-@app.post("/up")
+@app.post("/upload_csv")
 async def upload_csv(file: UploadFile = File(...)):
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only csv files allowed")
