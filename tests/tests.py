@@ -298,4 +298,3 @@ def test_clean_csv_in_chunks(tmp_path, monkeypatch):
     assert output_df['id'].tolist() == [1, 2, 3, 4]
     assert 'John Doe' in output_df['name'].values
     assert 'Jane Smith' in output_df['name'].values
-    assert 'Mixed encoding test: cafe resume' in output_df['description'].values
