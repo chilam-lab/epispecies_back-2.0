@@ -252,7 +252,7 @@ def test_get_third_class_missing_params(client: TestClient):
 def test_upload_csv(client: TestClient):
     csv_content = "id,name,cve,description\n1,test,10,Otras formas de enfermedad del corazon"
     response = client.post(
-        "/up",
+        "/upload_csv",
         files={"file": ("test.csv", csv_content, "text/csv")}
     )
     assert response.status_code == 200
