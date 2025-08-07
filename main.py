@@ -5,7 +5,8 @@ from starlette.background import BackgroundTasks
 from contextlib import contextmanager
 from typing import Generator
 from fastapi.encoders import jsonable_encoder
-from services.clean_csv import clean_csv_in_chunks, create_csv_from_cleaned
+from services.clean_csv import clean_csv_in_chunks, db_columns_to_lowercase
+from services.file_helper_functions import get_csv_in_directory_to_clean, get_cleaned_csv_files
 import os
 from pydantic import BaseModel
 from typing import Optional
@@ -57,22 +58,26 @@ def get_db() -> duckdb.DuckDBPyConnection:
 
 def init_db():
     try:
-        if not os.path.exists('db/cleaned_file.csv'):
-            clean_csv_in_chunks('db/def00_19_v2.csv', 'db/cleaned_file.csv')
+        get_csv_in_directory_to_clean()
+        get_cleaned_csv_files()
         db_connection.sql("""
             COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
-            FROM read_csv_auto('db/cleaned_file.csv', auto_detect=true, header=true))
+            FROM read_csv_auto('cleanedCSV/csv_to_table_file.csv', auto_detect=true, header=true))
             TO 'db/RAWDATA.parquet' (FORMAT PARQUET);
         """)
         db_connection.sql("""
             CREATE OR REPLACE TABLE RAWDATA AS
             SELECT * FROM 'db/RAWDATA.parquet';
         """)
+        db_columns_to_lowercase("RAWDATA", db_connection)
+
         db_connection.sql("""
             CREATE OR REPLACE TABLE ENFERMEDADES AS
             SELECT DISTINCT CVE_Grupo, Grupo, CVE_Enfermedad, Enfermedad, CVE_Causa_def, Causa_def
             FROM RAWDATA;
         """)
+        db_columns_to_lowercase("ENFERMEDADES", db_connection)
+
         db_connection.sql("CREATE INDEX IF NOT EXISTS id_enfermedad ON ENFERMEDADES (CVE_Enfermedad, CVE_Grupo, CVE_Causa_def);")
         db_connection.sql("""
             CREATE OR REPLACE TABLE DEFUNCIONES AS
@@ -80,16 +85,21 @@ def init_db():
             CAST(CVEGEO AS VARCHAR) AS CVEGEO, CVE_Metropoli, Ambito, Sexo, Edad_gpo, Ocupacion, Escolaridad, Edo_civil, Anio
             FROM RAWDATA;
         """)
+        db_columns_to_lowercase("DEFUNCIONES", db_connection)
+
         db_connection.sql("""
             CREATE OR REPLACE TABLE ESTADO_MUN AS
             SELECT DISTINCT CVE_Estado, Estado, CAST(CVEGEO AS VARCHAR) AS CVEGEO, Municipio
             FROM RAWDATA;
         """)
+        db_columns_to_lowercase("ESTADO_MUN", db_connection)
+
         db_connection.sql("""
             CREATE OR REPLACE TABLE METROPOLI AS
             SELECT DISTINCT CVE_Metropoli, Metropolis
             FROM RAWDATA;
         """)
+        db_columns_to_lowercase("METROPOLI", db_connection)
     except Exception as e:
         print(f"Error creating table: {e}")
         tables = db_connection.sql("SHOW TABLES").fetchall()
@@ -99,7 +109,7 @@ def init_db():
 async def startup_event():
     global db_connection
     db_connection = duckdb.connect("db/my_database.db")
-    #init_db()
+    init_db()
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -110,22 +120,6 @@ async def shutdown_event():
 @app.get("/")
 async def root(con: DuckDBConn = Depends(get_db)):
     return {"message": "Hello World"}
-
-@app.get("/clean/columns_to_lower_case")
-async def columns_to_lower_case(table_name: str, con: DuckDBConn = Depends(get_db)):
-    try:
-        columns_to_lower = con.sql(f"SELECT * FROM {table_name}").columns
-        for column in columns_to_lower:
-            if isinstance(column, str):
-                temp_column_name = column
-                column_name_lower = temp_column_name.lower()
-                if (temp_column_name != column_name_lower):
-                    con.sql(f"""ALTER TABLE {table_name} RENAME COLUMN {temp_column_name} TO 
-                            {column_name_lower}""")
-        result = con.sql(f"SELECT * FROM {table_name}").columns
-        return jsonable_encoder({"columns": result})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/show/tables")
 async def show_tables(con: DuckDBConn = Depends(get_db)):
