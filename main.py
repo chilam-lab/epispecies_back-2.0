@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from typing import Generator
 from fastapi.encoders import jsonable_encoder
 from services.clean_csv import clean_csv_in_chunks, db_columns_to_lowercase
-from services.file_helper_functions import get_csv_in_directory_to_clean, get_cleaned_csv_files
+from services.file_helper_functions import get_csv_in_directory_to_clean
 import os
 from pydantic import BaseModel
 from typing import Optional
@@ -59,10 +59,9 @@ def get_db() -> duckdb.DuckDBPyConnection:
 def init_db():
     try:
         get_csv_in_directory_to_clean()
-        get_cleaned_csv_files()
         db_connection.sql("""
             COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
-            FROM read_csv_auto('cleanedCSV/csv_to_table_file.csv', auto_detect=true, header=true))
+            FROM read_csv_auto('cleanedCSV/*_db.csv', auto_detect=true, header=true))
             TO 'db/RAWDATA.parquet' (FORMAT PARQUET);
         """)
         db_connection.sql("""
