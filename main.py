@@ -58,7 +58,8 @@ def get_db() -> duckdb.DuckDBPyConnection:
 
 def init_db():
     try:
-        get_csv_in_directory_to_clean()
+        if not os.path.exists('cleanedCSV/*.csv'):
+            get_csv_in_directory_to_clean()
         db_connection.sql("""
             COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
             FROM read_csv_auto('cleanedCSV/*_db.csv', auto_detect=true, header=true))
@@ -240,13 +241,25 @@ async def get_all_the_values(table:str, con: DuckDBConn = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
+## 1 population
+## 2 population with total population man and women
+## 3 population with total population per age
 @app.get("/population_table_test")
 async def population_table_test(year: str, cvegeo:str, edad_gpo:str = "", sexo:str = "", con: DuckDBConn = Depends(get_db)):
     try:
         if not year and not cvegeo:
             raise HTTPException(status_code=400, detail="Invalid input: year and cvegeo are required")
         print(year)
-        result = con.sql(f"SELECT poblacion FROM POPULATION WHERE cvegeo = {cvegeo} AND anio = {year};").fetchall()
+        query = "SELECT sexo, edad_gpo, poblacion FROM POPULATION WHERE cvegeo = ? AND anio = ?"
+        params = [cvegeo, year]
+        if edad_gpo:
+            query+= "AND edad_gpo = ?"
+            params.append(edad_gpo)
+        if sexo:
+            query += "AND sexo = ?"
+            params.append(sexo)
+        result = con.sql(query, params=params).fetchall()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
