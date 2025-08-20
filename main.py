@@ -70,6 +70,25 @@ def init_db():
         """)
         db_columns_to_lowercase("RAWDATA", db_connection)
 
+
+        db_connection.sql("""
+            COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
+            FROM read_csv_auto('cleanedCSV/*_pop.csv', auto_detect=true, header=true))
+            TO 'db/RAWPOPULATION.parquet' (FORMAT PARQUET);
+        """)
+        db_connection.sql("""
+            CREATE OR REPLACE TABLE RAWPOPULATION AS
+            SELECT * FROM 'db/RAWPOPULATION.parquet';
+        """)
+        db_columns_to_lowercase("RAWPOPULATION", db_connection)
+
+        db_connection.sql("""
+            CREATE OR REPLACE TABLE POPULATION AS
+            SELECT DISTINCT CAST(CVEGEO AS VARCHAR) AS CVEGEO, Anio, Sexo, Edad_gpo, Poblacion
+            FROM RAWPOPULATION;
+        """)
+        db_columns_to_lowercase("POPULATION", db_connection)
+
         db_connection.sql("""
             CREATE OR REPLACE TABLE ENFERMEDADES AS
             SELECT DISTINCT CVE_Grupo, Grupo, CVE_Enfermedad, Enfermedad, CVE_Causa_def, Causa_def
@@ -221,6 +240,16 @@ async def get_all_the_values(table:str, con: DuckDBConn = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+@app.get("/population_table_test")
+async def population_table_test(year: str, cvegeo:str, edad_gpo:str = "", sexo:str = "", con: DuckDBConn = Depends(get_db)):
+    try:
+        if not year and not cvegeo:
+            raise HTTPException(status_code=400, detail="Invalid input: year and cvegeo are required")
+        print(year)
+        result = con.sql(f"SELECT poblacion FROM POPULATION WHERE cvegeo = {cvegeo} AND anio = {year};").fetchall()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 def delete_tmp_file(path: str) -> None:
     os.unlink(path)

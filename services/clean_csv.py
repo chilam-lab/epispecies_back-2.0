@@ -31,16 +31,6 @@ def clean_csv_in_chunks(input_path, output_path, chunk_size=100000):
         print(f"Processed chunk {chunk_no+1} ({chunk_size * (chunk_no+1)} rows)")
         chunk_no += 1
 
-def create_csv_from_cleaned(first_chunk, input_path, output_path, chunk_size=100000):
-    chunk_no = 0    
-    for chunk in pd.read_csv(input_path, chunksize=chunk_size, encoding="utf-8", encoding_errors='replace',
-                        on_bad_lines='warn', dtype=str, engine='python', low_memory=True):
-        mode = 'w' if first_chunk else 'a'
-        chunk.to_csv(output_path, mode=mode, index=False, header=first_chunk, encoding='utf-8')
-        first_chunk = False
-        print(f"Processed chunk {chunk_no+1} ({chunk_size * (chunk_no+1)} rows)")
-        chunk_no += 1
-
 def db_columns_to_lowercase(table_name, con):
     columns_to_lower = con.sql(f"SELECT * FROM {table_name}").columns
     for column in columns_to_lower:

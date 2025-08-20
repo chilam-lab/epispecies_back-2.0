@@ -1,4 +1,4 @@
-from services.clean_csv import clean_csv_in_chunks, create_csv_from_cleaned
+from services.clean_csv import clean_csv_in_chunks
 from os import listdir, remove, rename
 from os.path import join, exists
 
@@ -21,11 +21,16 @@ def get_csv_in_directory_to_clean() -> bool:
         return cleaned_a_csv
     csvs_dir = "csv"
     dir_clean_csv = "cleanedCSV/"
+    db_suffix = "_db.csv"
+    pop_suffix = "_pop.csv"
     for file in listdir("csv/"):
         if file.endswith(".csv"):
             csv_file_dir = join(csvs_dir, file)
             name_of_cleaned_file = join(dir_clean_csv, file)
-            name_of_cleaned_file = name_of_cleaned_file[:-4] + "_db.csv"
+            if file.startswith("Pob"):
+                name_of_cleaned_file = name_of_cleaned_file[:-4] + pop_suffix
+            else:
+                name_of_cleaned_file = name_of_cleaned_file[:-4] + db_suffix
             if exists(name_of_cleaned_file):
                 remove(name_of_cleaned_file)
             clean_csv_in_chunks(csv_file_dir, name_of_cleaned_file)
