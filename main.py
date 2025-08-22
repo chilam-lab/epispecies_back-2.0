@@ -58,67 +58,82 @@ def get_db() -> duckdb.DuckDBPyConnection:
 
 def init_db():
     try:
-        if not os.path.exists('cleanedCSV/*.csv'):
-            get_csv_in_directory_to_clean()
-        db_connection.sql("""
-            COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
-            FROM read_csv_auto('cleanedCSV/*_db.csv', auto_detect=true, header=true))
-            TO 'db/RAWDATA.parquet' (FORMAT PARQUET);
-        """)
-        db_connection.sql("""
-            CREATE OR REPLACE TABLE RAWDATA AS
-            SELECT * FROM 'db/RAWDATA.parquet';
-        """)
-        db_columns_to_lowercase("RAWDATA", db_connection)
+        if get_csv_in_directory_to_clean():
+            db_connection.sql("""
+                COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
+                FROM read_csv_auto('cleanedCSV/*_db.csv', auto_detect=true, header=true))
+                TO 'db/RAWDATA.parquet' (FORMAT PARQUET);
+            """)
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE RAWDATA AS
+                SELECT * FROM 'db/RAWDATA.parquet';
+            """)
+            db_columns_to_lowercase("RAWDATA", db_connection)
 
+            #POPULATION table creation
+            #########################
+            db_connection.sql("""
+                COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
+                FROM read_csv_auto('cleanedCSV/*_pop.csv', auto_detect=true, header=true))
+                TO 'db/RAWPOPULATION.parquet' (FORMAT PARQUET);
+            """)
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE RAWPOPULATION AS
+                SELECT * FROM 'db/RAWPOPULATION.parquet';
+            """)
+            db_columns_to_lowercase("RAWPOPULATION", db_connection)
 
-        db_connection.sql("""
-            COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
-            FROM read_csv_auto('cleanedCSV/*_pop.csv', auto_detect=true, header=true))
-            TO 'db/RAWPOPULATION.parquet' (FORMAT PARQUET);
-        """)
-        db_connection.sql("""
-            CREATE OR REPLACE TABLE RAWPOPULATION AS
-            SELECT * FROM 'db/RAWPOPULATION.parquet';
-        """)
-        db_columns_to_lowercase("RAWPOPULATION", db_connection)
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE POPULATION AS
+                SELECT DISTINCT CAST(CVEGEO AS VARCHAR) AS CVEGEO, Anio, Sexo, Edad_gpo, Poblacion
+                FROM RAWPOPULATION;
+            """)
+            db_columns_to_lowercase("POPULATION", db_connection)
 
-        db_connection.sql("""
-            CREATE OR REPLACE TABLE POPULATION AS
-            SELECT DISTINCT CAST(CVEGEO AS VARCHAR) AS CVEGEO, Anio, Sexo, Edad_gpo, Poblacion
-            FROM RAWPOPULATION;
-        """)
-        db_columns_to_lowercase("POPULATION", db_connection)
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE POPULATION_GENDER AS
+                SELECT DISTINCT CAST(CVEGEO AS VARCHAR) AS CVEGEO, Anio, Sexo, Poblacion
+                FROM RAWPOPULATION;
+            """)
+            db_columns_to_lowercase("POPULATION_GENDER", db_connection)
 
-        db_connection.sql("""
-            CREATE OR REPLACE TABLE ENFERMEDADES AS
-            SELECT DISTINCT CVE_Grupo, Grupo, CVE_Enfermedad, Enfermedad, CVE_Causa_def, Causa_def
-            FROM RAWDATA;
-        """)
-        db_columns_to_lowercase("ENFERMEDADES", db_connection)
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE POPULATION_AGE AS
+                SELECT DISTINCT CAST(CVEGEO AS VARCHAR) AS CVEGEO, Anio, Edad_gpo, Poblacion
+                FROM RAWPOPULATION;
+            """)
+            db_columns_to_lowercase("POPULATION_AGE", db_connection)
+            ######################
 
-        db_connection.sql("CREATE INDEX IF NOT EXISTS id_enfermedad ON ENFERMEDADES (CVE_Enfermedad, CVE_Grupo, CVE_Causa_def);")
-        db_connection.sql("""
-            CREATE OR REPLACE TABLE DEFUNCIONES AS
-            SELECT CVE_Enfermedad, CVE_Grupo, CVE_Causa_def, CVE_Estado,
-            CAST(CVEGEO AS VARCHAR) AS CVEGEO, CVE_Metropoli, Ambito, Sexo, Edad_gpo, Ocupacion, Escolaridad, Edo_civil, Anio
-            FROM RAWDATA;
-        """)
-        db_columns_to_lowercase("DEFUNCIONES", db_connection)
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE ENFERMEDADES AS
+                SELECT DISTINCT CVE_Grupo, Grupo, CVE_Enfermedad, Enfermedad, CVE_Causa_def, Causa_def
+                FROM RAWDATA;
+            """)
+            db_columns_to_lowercase("ENFERMEDADES", db_connection)
 
-        db_connection.sql("""
-            CREATE OR REPLACE TABLE ESTADO_MUN AS
-            SELECT DISTINCT CVE_Estado, Estado, CAST(CVEGEO AS VARCHAR) AS CVEGEO, Municipio
-            FROM RAWDATA;
-        """)
-        db_columns_to_lowercase("ESTADO_MUN", db_connection)
+            db_connection.sql("CREATE INDEX IF NOT EXISTS id_enfermedad ON ENFERMEDADES (CVE_Enfermedad, CVE_Grupo, CVE_Causa_def);")
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE DEFUNCIONES AS
+                SELECT CVE_Enfermedad, CVE_Grupo, CVE_Causa_def, CVE_Estado,
+                CAST(CVEGEO AS VARCHAR) AS CVEGEO, CVE_Metropoli, Ambito, Sexo, Edad_gpo, Ocupacion, Escolaridad, Edo_civil, Anio
+                FROM RAWDATA;
+            """)
+            db_columns_to_lowercase("DEFUNCIONES", db_connection)
 
-        db_connection.sql("""
-            CREATE OR REPLACE TABLE METROPOLI AS
-            SELECT DISTINCT CVE_Metropoli, Metropolis
-            FROM RAWDATA;
-        """)
-        db_columns_to_lowercase("METROPOLI", db_connection)
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE ESTADO_MUN AS
+                SELECT DISTINCT CVE_Estado, Estado, CAST(CVEGEO AS VARCHAR) AS CVEGEO, Municipio
+                FROM RAWDATA;
+            """)
+            db_columns_to_lowercase("ESTADO_MUN", db_connection)
+
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE METROPOLI AS
+                SELECT DISTINCT CVE_Metropoli, Metropolis
+                FROM RAWDATA;
+            """)
+            db_columns_to_lowercase("METROPOLI", db_connection)
     except Exception as e:
         print(f"Error creating table: {e}")
         tables = db_connection.sql("SHOW TABLES").fetchall()
@@ -241,23 +256,25 @@ async def get_all_the_values(table:str, con: DuckDBConn = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-
-## 1 population
-## 2 population with total population man and women
-## 3 population with total population per age
-@app.get("/population_table_test")
-async def population_table_test(year: str, cvegeo:str, edad_gpo:str = "", sexo:str = "", con: DuckDBConn = Depends(get_db)):
+@app.get("/get_population")
+async def get_population(year: str, cvegeo:str, edad_gpo:str = "", sexo:str = "", con: DuckDBConn = Depends(get_db)):
     try:
         if not year and not cvegeo:
             raise HTTPException(status_code=400, detail="Invalid input: year and cvegeo are required")
-        print(year)
-        query = "SELECT sexo, edad_gpo, poblacion FROM POPULATION WHERE cvegeo = ? AND anio = ?"
         params = [cvegeo, year]
-        if edad_gpo:
-            query+= "AND edad_gpo = ?"
+        if edad_gpo == "" and sexo == "":
+            query = "SELECT sexo, edad_gpo, poblacion FROM POPULATION WHERE cvegeo = ? AND anio = ?"
+        elif edad_gpo != "" and sexo == "":
+            query = "SELECT edad_gpo, SUM(poblacion) FROM POPULATION_AGE WHERE cvegeo = ? AND anio = ?" \
+            "AND edad_gpo = ? GROUP BY edad_gpo"
             params.append(edad_gpo)
-        if sexo:
-            query += "AND sexo = ?"
+        elif edad_gpo == "" and sexo != "":
+            query = "SELECT sexo, SUM(poblacion) FROM POPULATION_GENDER WHERE cvegeo = ? AND anio = ?" \
+            "AND sexo = ? GROUP BY sexo"
+            params.append(sexo)
+        else:
+            query = "SELECT poblacion FROM POPULATION WHERE cvegeo = ? AND anio = ? AND edad_gpo = ? AND sexo = ?"
+            params.append(edad_gpo)
             params.append(sexo)
         result = con.sql(query, params=params).fetchall()
         return result

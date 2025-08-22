@@ -31,8 +31,7 @@ def get_csv_in_directory_to_clean() -> bool:
                 name_of_cleaned_file = name_of_cleaned_file[:-4] + pop_suffix
             else:
                 name_of_cleaned_file = name_of_cleaned_file[:-4] + db_suffix
-            if exists(name_of_cleaned_file):
-                remove(name_of_cleaned_file)
-            clean_csv_in_chunks(csv_file_dir, name_of_cleaned_file)
-            cleaned_a_csv = True
+            if not exists(name_of_cleaned_file):
+                clean_csv_in_chunks(csv_file_dir, name_of_cleaned_file)
+                cleaned_a_csv = True
     return cleaned_a_csv
