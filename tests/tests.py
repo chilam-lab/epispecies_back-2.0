@@ -48,6 +48,47 @@ def in_memory_db():
             ('G2', 'Group2', 'E1', 'C2', 'Cause2'),
             ('G3', 'Group3', 'E2', 'C3', 'Cause3');
     """)
+
+    conn.execute("""
+        CREATE TABLE POPULATION (
+            cvegeo VARCHAR,
+            anio VARCHAR,
+            sexo VARCHAR,
+            edad_gpo VARCHAR,
+            poblacion INTEGER
+        );
+        INSERT INTO POPULATION VALUES
+            ('1001', '2000', 'HOMBRES', '65', 10),
+            ('1001', '2000', 'MUJERES', '65', 12),
+            ('1001', '2000', 'HOMBRES', '14', 15),
+            ('1001', '2000', 'MUJERES', '14', 20);
+    """)
+    conn.execute("""
+        CREATE TABLE POPULATION_AGE (
+            cvegeo VARCHAR,
+            anio VARCHAR,
+            edad_gpo VARCHAR,
+            poblacion INTEGER
+        );
+        INSERT INTO POPULATION_AGE VALUES
+            ('1001', '2000', '65', 10),
+            ('1001', '2000', '65', 12),
+            ('1001', '2000', '14', 15),
+            ('1001', '2000', '14', 20);
+    """)
+    conn.execute("""
+        CREATE TABLE POPULATION_GENDER (
+            cvegeo VARCHAR,
+            anio VARCHAR,
+            sexo VARCHAR,
+            poblacion INTEGER
+        );
+        INSERT INTO POPULATION_GENDER VALUES
+            ('1001', '2000', 'HOMBRES', 10),
+            ('1001', '2000', 'MUJERES', 12),
+            ('1001', '2000', 'HOMBRES', 15),
+            ('1001', '2000', 'MUJERES', 50);
+    """)
     yield conn
     conn.close()
 
@@ -138,6 +179,62 @@ def test_get_columns(client):
     data = response.json()
     assert "columns" in data
     assert set(data["columns"]) == {"id", "name", "cause", "Anio", "CVE_Grupo", "Grupo", "CVE_Enfermedad", "CVE_Causa_def", "Causa_def"}
+
+# Test for /get_population endpoint
+def test_get_population(client):
+    response = client.get("/get_population?year=2000&cvegeo=1001")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    assert ["HOMBRES", "65", 10] in data
+
+# Test for /get_population with no parameters endpoint
+def test_get_population_no_params(client):
+    response = client.get("/get_population?")
+    with pytest.raises(AssertionError):
+        assert response.status_code == 400
+
+# Test for /get_population with all parameters endpoint
+def test_get_population_all(client):
+    response = client.get("/get_population?year=2000&cvegeo=1001&edad_gpo=65&sexo=HOMBRES")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    assert [10] in data
+
+# Test for /get_population with age parameter endpoint
+def test_get_population_age_success(client):
+    response = client.get("/get_population?year=2000&cvegeo=1001&edad_gpo=65")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    assert ["65", 22] in data
+
+# Test for /get_population with age parameter endpoint
+def test_get_population_age_Failure(client):
+    response = client.get("/get_population?year=2000&cvegeo=1001&edad_gpo=14")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    with pytest.raises(AssertionError):
+        assert ["14", 10] in data
+
+# Test for /get_population with gender parameter endpoint
+def test_get_population_gender_success(client):
+    response = client.get("/get_population?year=2000&cvegeo=1001&sexo=MUJERES")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    assert ["MUJERES", 62] in data
+
+# Test for /get_population with gender parameter endpoint
+def test_get_population_gender_Failure(client):
+    response = client.get("/get_population?year=2000&cvegeo=1001&sexo=HOMBRES")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    with pytest.raises(AssertionError):
+        assert ["HOMBRES", 30] in data
 
 # Test for /columns with invalid table
 def test_get_columns_invalid_table(client, in_memory_db):
