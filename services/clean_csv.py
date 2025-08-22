@@ -17,8 +17,8 @@ def clean_csv_in_chunks(input_path, output_path, chunk_size=100000):
     print(f"Detected encoding: {encoding} with confidence: {confidence}")
     
     # Process in chunks
-    chunks = pd.read_csv(input_path, chunksize=chunk_size, encoding='latin-1', 
-                        on_bad_lines='warn', low_memory=True)
+    chunks = pd.read_csv(input_path, chunksize=chunk_size, encoding="utf-8", encoding_errors='replace',
+                        on_bad_lines='warn', dtype=str, engine='python', low_memory=True)
     
     # Write header to output file
     first_chunk = True
