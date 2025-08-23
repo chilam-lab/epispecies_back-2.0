@@ -17,13 +17,13 @@ def get_csv_in_directory_to_clean() -> bool:
     --- False if directory is empty or no csv files were found.
     """
     cleaned_a_csv = False
-    if len(listdir("csv/")) == 0:
+    if len(listdir("db/")) == 0:
         return cleaned_a_csv
-    csvs_dir = "csv"
+    csvs_dir = "db"
     dir_clean_csv = "cleanedCSV/"
     db_suffix = "_db.csv"
     pop_suffix = "_pop.csv"
-    for file in listdir("csv/"):
+    for file in listdir("db/"):
         if file.endswith(".csv"):
             csv_file_dir = join(csvs_dir, file)
             name_of_cleaned_file = join(dir_clean_csv, file)

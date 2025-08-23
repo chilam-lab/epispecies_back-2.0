@@ -44,7 +44,7 @@ table_records = os.getenv("TABLE_RECORDS")
 
 @contextmanager
 def get_db_connection() -> Generator[duckdb.DuckDBPyConnection, None, None]:
-    con = duckdb.connect("db/my_database.db")
+    con = duckdb.connect("duckdb_files/my_database.db")
     try:
         db_connection.sql("SET threads TO 8;")
         db_connection.sql("SET memory_limit = '8GB';")
@@ -62,11 +62,11 @@ def init_db():
             db_connection.sql("""
                 COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
                 FROM read_csv_auto('cleanedCSV/*_db.csv', auto_detect=true, header=true))
-                TO 'db/RAWDATA.parquet' (FORMAT PARQUET);
+                TO 'duckdb_files/RAWDATA.parquet' (FORMAT PARQUET);
             """)
             db_connection.sql("""
                 CREATE OR REPLACE TABLE RAWDATA AS
-                SELECT * FROM 'db/RAWDATA.parquet';
+                SELECT * FROM 'duckdb_files/RAWDATA.parquet';
             """)
             db_columns_to_lowercase("RAWDATA", db_connection)
 
@@ -75,11 +75,11 @@ def init_db():
             db_connection.sql("""
                 COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
                 FROM read_csv_auto('cleanedCSV/*_pop.csv', auto_detect=true, header=true))
-                TO 'db/RAWPOPULATION.parquet' (FORMAT PARQUET);
+                TO 'duckdb_files/RAWPOPULATION.parquet' (FORMAT PARQUET);
             """)
             db_connection.sql("""
                 CREATE OR REPLACE TABLE RAWPOPULATION AS
-                SELECT * FROM 'db/RAWPOPULATION.parquet';
+                SELECT * FROM 'duckdb_files/RAWPOPULATION.parquet';
             """)
             db_columns_to_lowercase("RAWPOPULATION", db_connection)
 
@@ -142,7 +142,7 @@ def init_db():
 @app.on_event("startup")
 async def startup_event():
     global db_connection
-    db_connection = duckdb.connect("db/my_database.db")
+    db_connection = duckdb.connect("duckdb_files/my_database.db")
     init_db()
 
 @app.on_event("shutdown")
