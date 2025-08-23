@@ -90,4 +90,39 @@ RAWDATA ||--|| ESTADO_MUN: "hecha desde"
 RAWDATA ||--|| DEFUNCIONES: "hecha desde"
 RAWDATA ||--|| METROPOLI: "hecha desde"
 
+RAWPOPULATION {
+    string CVEGEO FK
+    string Anio FK
+    string Sexo FK
+    string Edad_gpo FK
+    int Poblacion 
+}
+
+POPULATION {
+    string CVEGEO FK
+    string Anio FK
+    string Sexo FK
+    string Edad_gpo FK
+    int Poblacion 
+}
+
+POPULATION_AGE {
+    string CVEGEO FK
+    string Anio FK
+    string Edad_gpo FK
+    int Poblacion 
+}
+
+POPULATION_GENDER {
+    string CVEGEO FK
+    string Anio FK
+    string Sexo FK
+    int Poblacion 
+}
+
+
+RAWPOPULATION ||--|| POPULATION: "hecha desde"
+RAWPOPULATION ||--|| POPULATION_GENDER: "hecha desde"
+RAWPOPULATION ||--|| POPULATION_AGE: "hecha desde"
+
 ```
