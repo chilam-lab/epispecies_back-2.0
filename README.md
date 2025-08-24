@@ -92,31 +92,31 @@ RAWDATA ||--|| METROPOLI: "hecha desde"
 
 RAWPOPULATION {
     string CVEGEO FK
-    string Anio FK
-    string Sexo FK
-    string Edad_gpo FK
+    string Anio 
+    string Sexo 
+    string Edad_gpo 
     int Poblacion 
 }
 
 POPULATION {
     string CVEGEO FK
-    string Anio FK
-    string Sexo FK
-    string Edad_gpo FK
+    string Anio 
+    string Sexo 
+    string Edad_gpo 
     int Poblacion 
 }
 
 POPULATION_AGE {
     string CVEGEO FK
-    string Anio FK
-    string Edad_gpo FK
+    string Anio 
+    string Edad_gpo 
     int Poblacion 
 }
 
 POPULATION_GENDER {
     string CVEGEO FK
-    string Anio FK
-    string Sexo FK
+    string Anio 
+    string Sexo 
     int Poblacion 
 }
 

@@ -12,7 +12,7 @@ def detect_encoding(file_path, sample_size=1000000):
 
 def normalize(string_chunk):
     if isinstance(string_chunk, str):
-        norm = unicodedata.normalize('NFD', string_chunk)
+        norm = unicodedata.normalize('NFC', string_chunk)
         return ''.join([c for c in norm if not unicodedata.combining(c)])
     return string_chunk
 
@@ -21,12 +21,12 @@ def clean_csv_in_chunks(input_path, output_path, chunk_size=100000):
     # Process in chunks
     first_chunk = True
     chunk_no = 0    
-    for chunk in pd.read_csv(input_path, chunksize=chunk_size, encoding="utf-8", encoding_errors='replace',
-                        on_bad_lines='warn', dtype=str, engine='python', low_memory=True):
+    for chunk in pd.read_csv(input_path, chunksize=chunk_size, encoding="latin-1", encoding_errors='backslashreplace',
+                        on_bad_lines='warn', dtype=str, engine="c", low_memory=True):
+        #chunk.apply(lambda s: normalize(str(s)))
         chunk.apply(lambda x: ''.join(ch for ch in str(x) if ord(ch) >= 32 or ch in '\n\r\t'))
-        chunk.apply(lambda s: normalize(s))
         mode = 'w' if first_chunk else 'a'
-        chunk.to_csv(output_path, mode=mode, index=False, header=first_chunk, encoding='utf-8')
+        chunk.to_csv(output_path, mode=mode, index=False, header=first_chunk, encoding='utf-8', errors= "backslashreplace")
         first_chunk = False
         print(f"Processed chunk {chunk_no+1} ({chunk_size * (chunk_no+1)} rows)")
         chunk_no += 1
