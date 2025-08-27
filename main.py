@@ -290,7 +290,7 @@ async def get_variables(con: DuckDBConn = Depends(get_db)):
     try:
         result = con.sql(f"""
             SELECT DISTINCT CONCAT(
-                '{{"ID": ', cve_enfermedad, 
+                '{{"id": ', cve_enfermedad, 
                 ', "name": "', REGEXP_REPLACE(enfermedad, '"', '\\"'), 
                 '", "level_size": 3, "filter_fields": ["anio", "sexo", "edad", "muncipio"], "available_grids": [18, 19]}}'
             )
@@ -300,7 +300,7 @@ async def get_variables(con: DuckDBConn = Depends(get_db)):
         
         result += con.sql(f"""
             SELECT DISTINCT CONCAT(
-                '{{"ID": ', cve_grupo, 
+                '{{"id": ', cve_grupo, 
                 ', "name": "', REGEXP_REPLACE(grupo, '"', '\\"'), 
                 '", "level_size": 2, "filter_fields": ["anio", "sexo", "edad", "muncipio"], "available_grids": [18, 19]}}'
             )
@@ -310,7 +310,7 @@ async def get_variables(con: DuckDBConn = Depends(get_db)):
         
         result += con.sql(f"""
             SELECT DISTINCT CONCAT(
-                '{{"ID": "', cve_causa_def, 
+                '{{"id": "', cve_causa_def, 
                 '", "name": "', REGEXP_REPLACE(causa_def, '"', '\\"'), 
                 '", "level_size": 1, "filter_fields": ["anio", "sexo", "edad", "muncipio"], "available_grids": [18, 19]}}'
             )
