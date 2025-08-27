@@ -393,20 +393,47 @@ async def get_variables_id(id: str, limit: int = 10, con: DuckDBConn = Depends(g
 @app.get("/get_variables")
 async def get_variables(con: DuckDBConn = Depends(get_db)):
     try:
-        result = con.sql(f"SELECT DISTINCT CONCAT(" \
-                         "'ID: ', cve_enfermedad, ', name: ', enfermedad, ', level_size: 3, filter_fields: [“anio”, “sexo”, “edad”, “muncipio”], available_grids: [18, 19]')" \
-                         " FROM ENFERMEDADES ORDER BY cve_enfermedad;").fetchall()
+        result = con.sql(f"""
+            SELECT DISTINCT CONCAT(
+                '{{"ID": ', cve_enfermedad, 
+                ', "name": "', REGEXP_REPLACE(enfermedad, '"', '\\"'), 
+                '", "level_size": 3, "filter_fields": ["anio", "sexo", "edad", "muncipio"], "available_grids": [18, 19]}}'
+            )
+            FROM ENFERMEDADES 
+            ORDER BY cve_enfermedad
+        """).fetchall()
         
-        result += con.sql(f"SELECT DISTINCT CONCAT(" \
-                         "'ID: ', cve_grupo, ', name: ', grupo, ', level_size: 2, filter_fields: [“anio”, “sexo”, “edad”, “muncipio”], available_grids: [18, 19]')" \
-                         " FROM ENFERMEDADES ORDER BY cve_grupo;").fetchall()
+        result += con.sql(f"""
+            SELECT DISTINCT CONCAT(
+                '{{"ID": ', cve_grupo, 
+                ', "name": "', REGEXP_REPLACE(grupo, '"', '\\"'), 
+                '", "level_size": 2, "filter_fields": ["anio", "sexo", "edad", "muncipio"], "available_grids": [18, 19]}}'
+            )
+            FROM ENFERMEDADES 
+            ORDER BY cve_grupo
+        """).fetchall()
         
-        result += con.sql(f"SELECT DISTINCT CONCAT(" \
-                         "'ID: ', cve_causa_def, ', name: ', causa_def, ', level_size: 1, filter_fields: [“anio”, “sexo”, “edad”, “muncipio”], available_grids: [18, 19]')" \
-                         " FROM ENFERMEDADES ORDER BY cve_causa_def;").fetchall()
-        return json.dumps(result, ensure_ascii=False, indent= 1)
+        result += con.sql(f"""
+            SELECT DISTINCT CONCAT(
+                '{{"ID": "', cve_causa_def, 
+                '", "name": "', REGEXP_REPLACE(causa_def, '"', '\\"'), 
+                '", "level_size": 1, "filter_fields": ["anio", "sexo", "edad", "muncipio"], "available_grids": [18, 19]}}'
+            )
+            FROM ENFERMEDADES 
+            ORDER BY cve_causa_def
+        """).fetchall()
+
+        parsed_result = []
+        for row in result:
+            try:
+                parsed_result.append(json.loads(row[0]))
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON in row: {row[0]}, Error: {e}")
+                raise HTTPException(status_code=500, detail=f"Invalid JSON in row: {row[0]}")
+        return jsonable_encoder(parsed_result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
+ 
 
 # EndPoint for cleaning a csv file and enable a download- 
 @app.post("/upload_csv")
