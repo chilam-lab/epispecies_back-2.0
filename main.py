@@ -345,6 +345,40 @@ async def get_data_id(grid_id: int, levels_id: list[int] = Query(), con: DuckDBC
                              )
                              FROM ENFERMEDADES 
                              ORDER BY {id}""").fetchall()
+            parsed_result = []
+            for row in result:
+                try:
+                    parsed_result.append(json.loads(row[0]))
+                except json.JSONDecodeError as e:
+                    print(f"Invalid JSON in row: {row[0]}, Error: {e}")
+                    raise HTTPException(status_code=500, detail=f"Invalid JSON in row: {row[0]}")
+            return jsonable_encoder(parsed_result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
+
+@app.get("/variables/id")
+async def get_variables_id(id: str, limit: int = 10, con: DuckDBConn = Depends(get_db)):
+    try:
+        if not id:
+            raise HTTPException(status_code=400, detail="Invalid input: id is required")
+        level = 0
+        mark = ""
+        if id == "cve_enfermedad":
+            level = 3
+        elif id == "cve_grupo":
+            level = 2
+        elif id == "cve_causa_def":
+            level = 1
+            mark = '"'
+        result = con.sql(f"""
+            SELECT DISTINCT CONCAT(
+                '{{"id": {mark}', {id}, 
+                '{mark}, "level_id": {level}, "data": {{"filter_fields": ["anio", "sexo", "edad", "muncipio"], "available_grids": [18, 19]}}}}'
+            )
+            FROM ENFERMEDADES 
+            ORDER BY {id}
+            LIMIT {limit}
+        """).fetchall()
         parsed_result = []
         for row in result:
             try:

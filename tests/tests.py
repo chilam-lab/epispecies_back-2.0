@@ -270,6 +270,18 @@ def test_upload_csv(client: TestClient):
     )
     assert response.status_code == 200
 
+# Test for /get_variables_id with gender parameter endpoint
+def test_get_variables_id(client):
+    response = client.get("/variables/id?id=cve_enfermedad")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    assert type(data) == list
+    assert any(enfermedad["id"] == 1 and enfermedad["level_id"] == 3 for enfermedad in data)
+    assert any('filter_fields' in enfermedad["data"] and 'available_grids' in enfermedad["data"] for enfermedad in data)
+    with pytest.raises(AssertionError):
+        assert any(enfermedad["id"] == "E000" and enfermedad["level_id"] == 1 for enfermedad in data)
+
 def test_clean_csv_in_chunks(client):
     file_content = "tests/csvs/Prueba1.csv"
     output_file = "tests/csvs/Prueba1C.csv"
