@@ -103,6 +103,17 @@ def init_db():
                 FROM RAWPOPULATION;
             """)
             db_columns_to_lowercase("POPULATION_AGE", db_connection)
+
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE POPULATION_TOTAL AS
+                SELECT 
+                    Anio,
+                    CAST(CVEGEO AS VARCHAR) AS CVEGEO,
+                    SUM(Poblacion) AS Total_Population
+                FROM RAWPOPULATION
+                GROUP BY Anio, CVEGEO;
+            """)
+            db_columns_to_lowercase("POPULATION_TOTAL", db_connection)
             ######################
 
             db_connection.sql("""
