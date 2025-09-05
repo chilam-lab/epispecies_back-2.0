@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.background import BackgroundTasks
@@ -13,6 +13,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from io import StringIO
 import tempfile
+import json
 
 from os import listdir, remove
 from os.path import join, exists
@@ -316,7 +317,45 @@ async def get_population(year: str, cvegeo:str, edad_gpo:str = "", sexo:str = ""
 
 def delete_tmp_file(path: str) -> None:
     os.unlink(path)
-    
+
+@app.get("/get_data/id")
+async def get_data_id(grid_id: int, levels_id: list[int] = Query(), con: DuckDBConn = Depends(get_db)):
+    try:
+        result = []
+        mark = ""
+        id = ""
+        if grid_id != 18 and grid_id != 19:
+            raise HTTPException(status_code=400, detail="Invalid input: invalid grid_id or not given.")
+        
+        for id_num in levels_id:
+            if id_num == 3:
+                id = "cve_enfermedad"
+            elif id_num == 2:
+                id = "cve_grupo"
+            elif id_num == 1:
+                id = "cve_causa_def"
+                mark = '"'
+            else:
+                raise HTTPException(status_code=400, detail="Invalid input: invalid levels_id.")
+            result += con.sql(f"""
+                             SELECT DISTINCT CONCAT(
+                             '{{"id": {mark}', {id}, 
+                             '{mark}, "grid_id": {grid_id},
+                              "level_id": {id_num}, "grid_cells_of_variable": ["P1", "P2", "P3", "P4"], "cells_used": [18, 19]}}'
+                             )
+                             FROM ENFERMEDADES 
+                             ORDER BY {id}""").fetchall()
+        parsed_result = []
+        for row in result:
+            try:
+                parsed_result.append(json.loads(row[0]))
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON in row: {row[0]}, Error: {e}")
+                raise HTTPException(status_code=500, detail=f"Invalid JSON in row: {row[0]}")
+        return jsonable_encoder(parsed_result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
+
 # EndPoint for cleaning a csv file and enable a download- 
 @app.post("/upload_csv")
 async def upload_csv(file: UploadFile = File(...)):

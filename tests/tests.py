@@ -37,16 +37,17 @@ def in_memory_db():
     """)
     conn.execute("""
         CREATE TABLE ENFERMEDADES (
-            CVE_Grupo VARCHAR,
-            Grupo VARCHAR,
-            CVE_Enfermedad VARCHAR,
-            CVE_Causa_def VARCHAR,
-            Causa_def VARCHAR
+            cve_grupo VARCHAR,
+            grupo VARCHAR,
+            cve_enfermedad VARCHAR,
+            enfermedad VARCHAR,
+            cve_causa_def VARCHAR,
+            causa_def VARCHAR
         );
         INSERT INTO ENFERMEDADES VALUES
-            ('G1', 'Group1', 'E1', 'C1', 'Cause1'),
-            ('G2', 'Group2', 'E1', 'C2', 'Cause2'),
-            ('G3', 'Group3', 'E2', 'C3', 'Cause3');
+            ('1', 'Group1', '1', 'Enf1', '1', 'Cause1'),
+            ('2', 'Group2', '1', 'Enf2', '2', 'Cause2'),
+            ('3', 'Group3', '2', 'Enf3', '3', 'Cause3');
     """)
     yield conn
     conn.close()
@@ -243,6 +244,19 @@ def test_get_third_class_no_data(client: TestClient):
         response = client.get("/get_third_level_class?search_id_first_class=E1&search_id_second_class=Invalid")
         assert response.status_code == 200, f"Expected 200, got {response.status_code}. Response: {response.text}"
         assert response.json() == {"message": "No data found"}, f"Expected 'No data found', got {response.json()}"
+
+# Test for /get_data_id endpoint
+def test_get_data_id(client):
+    response = client.get(f"/get_data/id?grid_id=18&levels_id=2&levels_id=3")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    assert type(data) == list
+    assert any(enfermedad["id"] == 1 and enfermedad["level_id"] == 3 for enfermedad in data)
+    assert any(enfermedad["grid_id"] == 18 for enfermedad in data)
+    with pytest.raises(AssertionError):
+        assert any(enfermedad["id"] == "E000" and enfermedad["level_id"] == 1 for enfermedad in data)
+
 def test_get_third_class_missing_params(client: TestClient):
     response = client.get("/get_third_level_class")
     assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
