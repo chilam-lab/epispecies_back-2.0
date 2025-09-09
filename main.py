@@ -105,6 +105,28 @@ def init_db():
             db_columns_to_lowercase("POPULATION_AGE", db_connection)
             ######################
 
+            #METROPOLI table creation
+            #########################
+            db_connection.sql("""
+                COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
+                FROM read_csv_auto('cleanedCSV/*_mps.csv', auto_detect=true, header=true))
+                TO 'duckdb_files/RAW_CVE_METROPOLIS.parquet' (FORMAT PARQUET);
+            """)
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE RAW_CVE_METROPOLIS AS
+                SELECT * FROM 'duckdb_files/RAW_CVE_METROPOLIS.parquet';
+            """)
+            db_columns_to_lowercase("RAW_CVE_METROPOLIS", db_connection)
+
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE CVE_METROPOLIS AS
+                SELECT DISTINCT CAST(CVEGEO AS VARCHAR) AS CVEGEO, CVE_SUN, Metropoli
+                FROM RAW_CVE_METROPOLIS;
+            """)
+            db_columns_to_lowercase("CVE_METROPOLIS", db_connection)
+
+            ###########################
+
             db_connection.sql("""
                 CREATE OR REPLACE TABLE ENFERMEDADES AS
                 SELECT DISTINCT CVE_Grupo, Grupo, CVE_Enfermedad, Enfermedad, CVE_Causa_def, Causa_def
