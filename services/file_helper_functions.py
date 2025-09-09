@@ -23,12 +23,15 @@ def get_csv_in_directory_to_clean() -> bool:
     dir_clean_csv = "cleanedCSV/"
     db_suffix = "_db.csv"
     pop_suffix = "_pop.csv"
+    mps_suffix = "_mps.csv"
     for file in listdir("db/"):
         if file.endswith(".csv"):
             csv_file_dir = join(csvs_dir, file)
             name_of_cleaned_file = join(dir_clean_csv, file)
             if file.startswith("Pob"):
                 name_of_cleaned_file = name_of_cleaned_file[:-4] + pop_suffix
+            elif file.startswith("CVE_Metro"):
+                name_of_cleaned_file = name_of_cleaned_file[:-4] + mps_suffix
             else:
                 name_of_cleaned_file = name_of_cleaned_file[:-4] + db_suffix
             if not exists(name_of_cleaned_file):
