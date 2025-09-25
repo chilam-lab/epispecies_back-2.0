@@ -146,20 +146,38 @@ def init_db():
             """)
             db_columns_to_lowercase("ENFERMEDADES", db_connection)
 
-            #VARIABLES_ENFERMEDADES table creation
+            #VAR_DISEASES table creation
             ###########################
             db_connection.sql("""
-                CREATE OR REPLACE SEQUENCE num_seq START 400;
-            """)
-            db_connection.sql("""
                 CREATE OR REPLACE TABLE VAR_DISEASES AS
-                SELECT DISTINCT CVE_Enfermedad, Enfermedad
+                SELECT DISTINCT CVE_Enfermedad, Enfermedad, 'EN4' || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id
                 FROM RAWDATA;
             """)
-            db_connection.sql("""
-                ALTER TABLE VAR_DISEASES ADD COLUMN id VARCHAR DEFAULT 'EN' || nextval('num_seq');
-            """)
             db_columns_to_lowercase("VAR_DISEASES", db_connection)
+
+            ###########################
+
+            #VAR_GROUP table creation
+            ###########################
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE VAR_GROUP AS
+                SELECT DISTINCT CVE_Grupo, Grupo,
+                'GR' || CVE_ENFERMEDAD || CVE_GRUPO || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id
+                FROM RAWDATA;
+            """)
+            db_columns_to_lowercase("VAR_GROUP", db_connection)
+
+            ###########################
+
+            #VAR_CAUSEDEATH table creation
+            ###########################
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE VAR_CAUSEDEATH AS
+                SELECT DISTINCT CVE_Causa_def, Causa_def,
+                CVE_Causa_def || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id
+                FROM RAWDATA;
+            """)
+            db_columns_to_lowercase("VAR_CAUSEDEATH", db_connection)
 
             ###########################
 
@@ -420,25 +438,25 @@ async def get_variables(con: DuckDBConn = Depends(get_db)):
             ORDER BY id
         """).fetchall()
         
-        #result += con.sql(f"""
-        #    SELECT DISTINCT CONCAT(
-        #        '{{"id": ', cve_grupo, 
-        #        ', "name": "', REGEXP_REPLACE(grupo, '"', '\\"'), 
-        #        '", "level_size": 2, "filter_fields": ["anio", "sexo", "edad", "muncipio"], "available_grids": [18, 19]}}'
-        #    )
-        #    FROM ENFERMEDADES 
-        #    ORDER BY cve_grupo
-        #""").fetchall()
+        result += con.sql(f"""
+            SELECT DISTINCT CONCAT(
+                '{{"id": "', id, 
+                '", "name": "', REGEXP_REPLACE(grupo, '"', '\\"'), 
+                '", "level_size": 10, "available_grids": ["mun"]}}'
+            )
+            FROM VAR_GROUP 
+            ORDER BY id
+        """).fetchall()
         
-        #result += con.sql(f"""
-        #    SELECT DISTINCT CONCAT(
-        #        '{{"id": "', cve_causa_def, 
-        #        '", "name": "', REGEXP_REPLACE(causa_def, '"', '\\"'), 
-        #        '", "level_size": 1, "filter_fields": ["anio", "sexo", "edad", "muncipio"], "available_grids": [18, 19]}}'
-        #    )
-        #    FROM ENFERMEDADES 
-        #    ORDER BY cve_causa_def
-        #""").fetchall()
+        result += con.sql(f"""
+            SELECT DISTINCT CONCAT(
+                '{{"id": "', id, 
+                '", "name": "', REGEXP_REPLACE(causa_def, '"', '\\"'), 
+                '", "level_size": 10, "available_grids": ["mun"]}}'
+            )
+            FROM VAR_CAUSEDEATH
+            ORDER BY id
+        """).fetchall()
 
         parsed_result = []
         for row in result:
