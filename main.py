@@ -150,7 +150,7 @@ def init_db():
             ###########################
             db_connection.sql("""
                 CREATE OR REPLACE TABLE VAR_DISEASES AS
-                SELECT DISTINCT CVE_Enfermedad, Enfermedad, 'EN4' || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id
+                SELECT DISTINCT CVE_Enfermedad, Enfermedad, 'EN' || CVE_Enfermedad || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id
                 FROM RAWDATA;
             """)
             db_columns_to_lowercase("VAR_DISEASES", db_connection)
