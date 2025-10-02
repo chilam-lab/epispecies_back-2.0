@@ -150,7 +150,7 @@ def init_db():
             ###########################
             db_connection.sql("""
                 CREATE OR REPLACE TABLE VAR_DISEASES AS
-                SELECT DISTINCT CVE_Enfermedad, Enfermedad, 'EN' || CVE_Enfermedad || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id
+                SELECT DISTINCT CVE_Enfermedad, Enfermedad || ' ' || Anio AS Enfermedad, 'EN' || CVE_Enfermedad || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id
                 FROM RAWDATA;
             """)
             db_columns_to_lowercase("VAR_DISEASES", db_connection)
@@ -161,7 +161,7 @@ def init_db():
             ###########################
             db_connection.sql("""
                 CREATE OR REPLACE TABLE VAR_GROUP AS
-                SELECT DISTINCT CVE_Grupo, Grupo,
+                SELECT DISTINCT CVE_Grupo, Grupo || ' ' || Anio AS Grupo,
                 'GR' || CVE_ENFERMEDAD || CVE_GRUPO || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id
                 FROM RAWDATA;
             """)
@@ -173,7 +173,7 @@ def init_db():
             ###########################
             db_connection.sql("""
                 CREATE OR REPLACE TABLE VAR_CAUSEDEATH AS
-                SELECT DISTINCT CVE_Causa_def, Causa_def,
+                SELECT DISTINCT CVE_Causa_def, Causa_def || ' ' || Anio AS Causa_def,
                 CVE_Causa_def || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id
                 FROM RAWDATA;
             """)
@@ -432,17 +432,19 @@ async def get_variables(con: DuckDBConn = Depends(get_db)):
             SELECT DISTINCT CONCAT(
                 '{{"id": "', id, 
                 '", "name": "', REGEXP_REPLACE(enfermedad, '"', '\\"'), 
-                '", "level_size": 10, "available_grids": ["mun"]}}'
+                '", "level_size": 10, "filter_fields": [], "available_grids": ["mun"]}}'
             )
             FROM VAR_DISEASES 
             ORDER BY id
         """).fetchall()
+
+        
         
         result += con.sql(f"""
             SELECT DISTINCT CONCAT(
                 '{{"id": "', id, 
                 '", "name": "', REGEXP_REPLACE(grupo, '"', '\\"'), 
-                '", "level_size": 10, "available_grids": ["mun"]}}'
+                '", "level_size": 10, "filter_fields": [], "available_grids": ["mun"]}}'
             )
             FROM VAR_GROUP 
             ORDER BY id
@@ -452,7 +454,7 @@ async def get_variables(con: DuckDBConn = Depends(get_db)):
             SELECT DISTINCT CONCAT(
                 '{{"id": "', id, 
                 '", "name": "', REGEXP_REPLACE(causa_def, '"', '\\"'), 
-                '", "level_size": 10, "available_grids": ["mun"]}}'
+                '", "level_size": 10, "filter_fields": [], "available_grids": ["mun"]}}'
             )
             FROM VAR_CAUSEDEATH
             ORDER BY id

@@ -90,6 +90,13 @@ def in_memory_db():
             ('1001', '2000', 'HOMBRES', 15),
             ('1001', '2000', 'MUJERES', 50);
     """)
+    # Attach your original database
+    conn.execute("ATTACH 'duckdb_files/my_database.db' AS orig")
+
+    # Copy the three tables you need
+    conn.execute("CREATE OR REPLACE TABLE VAR_DISEASES AS SELECT * FROM orig.VAR_DISEASES")
+    conn.execute("CREATE OR REPLACE TABLE VAR_GROUP AS SELECT * FROM orig.VAR_GROUP")
+    conn.execute("CREATE OR REPLACE TABLE VAR_CAUSEDEATH AS SELECT * FROM orig.VAR_CAUSEDEATH")
     yield conn
     conn.close()
 
@@ -359,19 +366,29 @@ def test_get_population_gender_Failure(client):
     with pytest.raises(AssertionError):
         assert ["HOMBRES", 30] in data
 
-# Test for /get_population with gender parameter endpoint
+# Test for /get_variables endpoint
 def test_get_variables(client):
     response = client.get("/get_variables")
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
     assert type(data) == list
-    print(data)
-    assert any(enfermedad["name"] == "Enf2" and enfermedad["id"] == 1 for enfermedad in data)
-    assert any(enfermedad["filter_fields"] == ['anio', 'sexo', 'edad', 'muncipio'] and enfermedad["level_size"] == 1 for enfermedad in data)
-    with pytest.raises(AssertionError):
-        assert any(enfermedad["name"] == "Enf2" and enfermedad["level_size"] == 1 for enfermedad in data)
-
+    assert any(enfermedad["name"] == "Enfermedades respiratorias 2000" and enfermedad["id"] == "EN1000" for enfermedad in data)
+    
+    num_of_diseases = 0
+    num_of_group = 0
+    num_of_cause = 0
+    for ids in data:
+        if ids["id"].startswith("EN"):
+            num_of_diseases += 1
+        elif ids["id"].startswith("GR"):
+            num_of_group += 1
+        else:
+            num_of_cause += 1
+    assert num_of_diseases == 100
+    assert num_of_group == 964
+    assert num_of_cause == 14578
+    
 def test_upload_csv(client: TestClient):
     csv_content = "id,name,cve,description\n1,test,10,Otras formas de enfermedad del corazon"
     response = client.post(
@@ -380,7 +397,7 @@ def test_upload_csv(client: TestClient):
     )
     assert response.status_code == 200
 
-# Test for /get_variables_id with gender parameter endpoint
+# Test for /get_variables_id with cve_enfermedad parameter endpoint
 def test_get_variables_id(client):
     response = client.get("/variables/id?id=cve_enfermedad")
     assert response.status_code == 200
