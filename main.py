@@ -7,6 +7,7 @@ from typing import Generator
 from fastapi.encoders import jsonable_encoder
 from services.clean_csv import clean_csv_in_chunks, db_columns_to_lowercase
 from services.file_helper_functions import get_csv_in_directory_to_clean
+from pandas import qcut, read_sql, DataFrame
 import os
 from pydantic import BaseModel
 from typing import Optional
@@ -354,40 +355,51 @@ def delete_tmp_file(path: str) -> None:
     os.unlink(path)
 
 @app.get("/get_data/id")
-async def get_data_id(grid_id: int, levels_id: list[int] = Query(), con: DuckDBConn = Depends(get_db)):
+async def get_data_id(id: str, con: DuckDBConn = Depends(get_db)):
     try:
-        result = []
-        mark = ""
-        id = ""
-        if grid_id != 18 and grid_id != 19:
-            raise HTTPException(status_code=400, detail="Invalid input: invalid grid_id or not given.")
+        var_table = ""
+        cve = ""
+        atributo = ""
+        lim = 1000 #Test for quicker iteration, remove this and limit from first query after this endpoint works correctly
+        if id.startswith("EN"):
+            var_table = "VAR_DISEASES"
+            cve = "cve_enfermedad"
+            atributo = "enfermedad"
+        elif id.startswith("GR"):
+            var_table = "VAR_GROUP"
+            cve = "cve_grupo"
+            atributo = "grupo"
+        else:
+            var_table = "VAR_CAUSEDEATH"
+            cve = "cve_causa_def"
+            atributo = "causa_def"
+
+        search_count = con.sql(f"""
+                SELECT anio, cvegeo, COUNT(*) AS count FROM DEFUNCIONES
+                INNER JOIN {var_table} ON DEFUNCIONES.{cve} = {var_table}.{cve}
+                WHERE {var_table}.id = '{id}'
+                GROUP BY anio, cvegeo LIMIT {lim};""").df()
+        search_count['bin'] = qcut(search_count['count'], 10, duplicates='drop')
         
-        for id_num in levels_id:
-            if id_num == 3:
-                id = "cve_enfermedad"
-            elif id_num == 2:
-                id = "cve_grupo"
-            elif id_num == 1:
-                id = "cve_causa_def"
-                mark = '"'
-            else:
-                raise HTTPException(status_code=400, detail="Invalid input: invalid levels_id.")
-            result += con.sql(f"""
-                             SELECT DISTINCT CONCAT(
-                             '{{"id": {mark}', {id}, 
-                             '{mark}, "grid_id": {grid_id},
-                              "level_id": {id_num}, "grid_cells_of_variable": ["P1", "P2", "P3", "P4"], "cells_used": [18, 19]}}'
-                             )
-                             FROM ENFERMEDADES 
-                             ORDER BY {id}""").fetchall()
-            parsed_result = []
-            for row in result:
-                try:
-                    parsed_result.append(json.loads(row[0]))
-                except json.JSONDecodeError as e:
-                    print(f"Invalid JSON in row: {row[0]}, Error: {e}")
-                    raise HTTPException(status_code=500, detail=f"Invalid JSON in row: {row[0]}")
-            return jsonable_encoder(parsed_result)
+        result = []
+        num_val = 1
+        for val in search_count["bin"]:
+            result += con.sql(f"""SELECT DISTINCT CONCAT(
+                         '{{"id": "{id}",
+                         "level_id": "{id}-{num_val}",
+                         "bin": {num_val}, "data": ["{cve}", "{atributo}", "{val}"]}}')
+                         FROM {var_table}
+                         ORDER BY id""").fetchall()
+            num_val += 1
+
+        parsed_result = []
+        for row in result:
+            try:
+                parsed_result.append(json.loads(row[0]))
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON in row: {row[0]}, Error: {e}")
+                raise HTTPException(status_code=500, detail=f"Invalid JSON in row: {row[0]}")
+        return jsonable_encoder(parsed_result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
@@ -438,8 +450,6 @@ async def get_variables(con: DuckDBConn = Depends(get_db)):
             ORDER BY id
         """).fetchall()
 
-        
-        
         result += con.sql(f"""
             SELECT DISTINCT CONCAT(
                 '{{"id": "', id, 
