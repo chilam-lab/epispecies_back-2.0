@@ -373,12 +373,14 @@ async def get_data_id(id: str, con: DuckDBConn = Depends(get_db)):
             var_table = "VAR_CAUSEDEATH"
             cve = "cve_causa_def"
             atributo = "causa_def"
+        
+        cve_of_id = con.sql(f"""SELECT {cve} FROM {var_table} WHERE {var_table}.id = '{id}';""").fetchone()[0]
 
         search_count = con.sql(f"""
                 SELECT anio, cvegeo, COUNT(*) AS count FROM DEFUNCIONES
-                INNER JOIN {var_table} ON DEFUNCIONES.{cve} = {var_table}.{cve}
-                WHERE {var_table}.id = '{id}'
+                WHERE DEFUNCIONES.{cve} = '{cve_of_id}'
                 GROUP BY anio, cvegeo LIMIT {lim};""").df()
+        
         search_count['bin'] = qcut(search_count['count'], 10, duplicates='drop')
         
         result = []
