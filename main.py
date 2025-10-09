@@ -156,6 +156,14 @@ def init_db():
             """)
             db_columns_to_lowercase("VAR_DISEASES", db_connection)
 
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE DATA_VAR_DISEASES AS
+                SELECT DISTINCT 'EN' || CVE_Enfermedad || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id,
+                CVE_Enfermedad, Anio, CAST(CVEGEO AS VARCHAR) AS CVEGEO, COUNT(*) AS count
+                FROM RAWDATA GROUP BY id, CVE_Enfermedad, Anio, CVEGEO;
+            """)
+            db_columns_to_lowercase("DATA_VAR_DISEASES", db_connection)
+
             ###########################
 
             #VAR_GROUP table creation
@@ -167,6 +175,14 @@ def init_db():
                 FROM RAWDATA;
             """)
             db_columns_to_lowercase("VAR_GROUP", db_connection)
+
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE DATA_VAR_GROUP AS
+                SELECT DISTINCT 'GR' || CVE_ENFERMEDAD || CVE_GRUPO || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id,
+                CVE_Grupo, Anio, CAST(CVEGEO AS VARCHAR) AS CVEGEO, COUNT(*) AS count
+                FROM RAWDATA GROUP BY id, CVE_Grupo, Anio, CVEGEO;
+            """)
+            db_columns_to_lowercase("DATA_VAR_GROUP", db_connection)
 
             ###########################
 
@@ -180,6 +196,15 @@ def init_db():
             """)
             db_columns_to_lowercase("VAR_CAUSEDEATH", db_connection)
 
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE DATA_VAR_CAUSEDEATH AS
+                SELECT DISTINCT CVE_Causa_def || LPAD(CAST(Anio % 100 AS VARCHAR), 2, '00') AS id,
+                CVE_Causa_def, Anio, CAST(CVEGEO AS VARCHAR) AS CVEGEO, COUNT(*) AS count
+                FROM RAWDATA GROUP BY id, CVE_Causa_def, Anio, CVEGEO;
+            """)
+            db_columns_to_lowercase("DATA_VAR_CAUSEDEATH", db_connection)
+            
+            #id, cve, anio, cvegeo, count(*)
             ###########################
 
             db_connection.sql("CREATE INDEX IF NOT EXISTS id_enfermedad ON ENFERMEDADES (CVE_Enfermedad, CVE_Grupo, CVE_Causa_def);")
@@ -360,36 +385,41 @@ async def get_data_id(id: str, con: DuckDBConn = Depends(get_db)):
         var_table = ""
         cve = ""
         atributo = ""
-        lim = 1000 #Test for quicker iteration, remove this and limit from first query after this endpoint works correctly
+        year_to_search = 0
+        if not id or id == "":
+            raise HTTPException(status_code=400, detail="Invalid input: id is required")
+        lim = 10 #Test for quicker iteration, remove this and limit from first query after this endpoint works correctly
         if id.startswith("EN"):
-            var_table = "VAR_DISEASES"
+            var_table = "DATA_VAR_DISEASES"
             cve = "cve_enfermedad"
             atributo = "enfermedad"
         elif id.startswith("GR"):
-            var_table = "VAR_GROUP"
+            var_table = "DATA_VAR_GROUP"
             cve = "cve_grupo"
             atributo = "grupo"
         else:
-            var_table = "VAR_CAUSEDEATH"
+            var_table = "DATA_VAR_CAUSEDEATH"
             cve = "cve_causa_def"
             atributo = "causa_def"
-        
-        cve_of_id = con.sql(f"""SELECT {cve} FROM {var_table} WHERE {var_table}.id = '{id}';""").fetchone()[0]
-
+        year_to_search = int("20" + str(id[-2:]))
+    
         search_count = con.sql(f"""
-                SELECT anio, cvegeo, COUNT(*) AS count FROM DEFUNCIONES
-                WHERE DEFUNCIONES.{cve} = '{cve_of_id}'
-                GROUP BY anio, cvegeo LIMIT {lim};""").df()
+                SELECT anio, cvegeo, count FROM {var_table}
+                WHERE {var_table}.id = '{id}'
+                AND anio = {year_to_search}
+                GROUP BY anio, cvegeo, count;""").df()
         
-        search_count['bin'] = qcut(search_count['count'], 10, duplicates='drop')
+        search_count['decile'] = qcut(search_count['count'].rank(method='first'), 10, labels=range(1,11))
+        decile_summary = search_count.groupby('decile').agg(municipalities=('count', 'size'), min_count=('count', 'min'), max_count=('count', 'max') ).reset_index() 
+        print(decile_summary)
         
         result = []
         num_val = 1
-        for val in search_count["bin"]:
+        for val_min, val_max in zip(decile_summary["min_count"], decile_summary["max_count"]):
             result += con.sql(f"""SELECT DISTINCT CONCAT(
                          '{{"id": "{id}",
                          "level_id": "{id}-{num_val}",
-                         "bin": {num_val}, "data": ["{cve}", "{atributo}", "{val}"]}}')
+                         "bin": {num_val}, "data": ["{cve}", "{atributo}", "({val_min}-{val_max}]"]}}')
                          FROM {var_table}
                          ORDER BY id""").fetchall()
             num_val += 1
