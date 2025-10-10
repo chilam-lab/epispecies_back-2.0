@@ -385,6 +385,7 @@ async def get_data_id(id: str, con: DuckDBConn = Depends(get_db)):
         var_table = ""
         cve = ""
         atributo = ""
+        atr_id = []
         year_to_search = 0
         if not id or id == "":
             raise HTTPException(status_code=400, detail="Invalid input: id is required")
@@ -393,14 +394,17 @@ async def get_data_id(id: str, con: DuckDBConn = Depends(get_db)):
             var_table = "DATA_VAR_DISEASES"
             cve = "cve_enfermedad"
             atributo = "enfermedad"
+            atr_id = con.sql(f"""SELECT {cve}, {atributo} FROM VAR_DISEASES WHERE VAR_DISEASES.id = '{id}'""").fetchone()
         elif id.startswith("GR"):
             var_table = "DATA_VAR_GROUP"
             cve = "cve_grupo"
             atributo = "grupo"
+            atr_id = con.sql(f"""SELECT {cve}, {atributo} FROM VAR_GROUP WHERE VAR_GROUP.id = '{id}'""").fetchone()
         else:
             var_table = "DATA_VAR_CAUSEDEATH"
             cve = "cve_causa_def"
             atributo = "causa_def"
+            atr_id = con.sql(f"""SELECT {cve}, {atributo} FROM VAR_CAUSEDEATH WHERE VAR_CAUSEDEATH.id = '{id}'""").fetchone()
         year_to_search = int("20" + str(id[-2:]))
     
         search_count = con.sql(f"""
@@ -419,7 +423,7 @@ async def get_data_id(id: str, con: DuckDBConn = Depends(get_db)):
             result += con.sql(f"""SELECT DISTINCT CONCAT(
                          '{{"id": "{id}",
                          "level_id": "{id}-{num_val}",
-                         "bin": {num_val}, "data": ["{cve}", "{atributo}", "({val_min}-{val_max}]"]}}')
+                         "bin": {num_val}, "data": ["{atr_id[0]}", "{atr_id[1]}", "({val_min}-{val_max}]"]}}')
                          FROM {var_table}
                          ORDER BY id""").fetchall()
             num_val += 1
