@@ -93,10 +93,14 @@ def in_memory_db():
     # Attach your original database
     conn.execute("ATTACH 'duckdb_files/my_database.db' AS orig")
 
-    # Copy the three tables you need
+    # Copy tables we need
     conn.execute("CREATE OR REPLACE TABLE VAR_DISEASES AS SELECT * FROM orig.VAR_DISEASES")
     conn.execute("CREATE OR REPLACE TABLE VAR_GROUP AS SELECT * FROM orig.VAR_GROUP")
     conn.execute("CREATE OR REPLACE TABLE VAR_CAUSEDEATH AS SELECT * FROM orig.VAR_CAUSEDEATH")
+
+    conn.execute("CREATE OR REPLACE TABLE DATA_VAR_DISEASES AS SELECT * FROM orig.DATA_VAR_DISEASES")
+    conn.execute("CREATE OR REPLACE TABLE DATA_VAR_GROUP AS SELECT * FROM orig.DATA_VAR_GROUP")
+    conn.execute("CREATE OR REPLACE TABLE DATA_VAR_CAUSEDEATH AS SELECT * FROM orig.DATA_VAR_CAUSEDEATH")
     yield conn
     conn.close()
 
@@ -293,18 +297,6 @@ def test_get_third_class_no_data(client: TestClient):
         assert response.status_code == 200, f"Expected 200, got {response.status_code}. Response: {response.text}"
         assert response.json() == {"message": "No data found"}, f"Expected 'No data found', got {response.json()}"
 
-# Test for /get_data_id endpoint
-def test_get_data_id(client):
-    response = client.get(f"/get_data/id?grid_id=18&levels_id=2&levels_id=3")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) > 0
-    assert type(data) == list
-    assert any(enfermedad["id"] == 1 and enfermedad["level_id"] == 3 for enfermedad in data)
-    assert any(enfermedad["grid_id"] == 18 for enfermedad in data)
-    with pytest.raises(AssertionError):
-        assert any(enfermedad["id"] == "E000" and enfermedad["level_id"] == 1 for enfermedad in data)
-
 def test_get_third_class_missing_params(client: TestClient):
     response = client.get("/get_third_level_class")
     assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
@@ -366,9 +358,9 @@ def test_get_population_gender_Failure(client):
     with pytest.raises(AssertionError):
         assert ["HOMBRES", 30] in data
 
-# Test for /get_variables endpoint
+# Test for /variables endpoint
 def test_get_variables(client):
-    response = client.get("/get_variables")
+    response = client.get("/variables")
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
@@ -397,17 +389,23 @@ def test_upload_csv(client: TestClient):
     )
     assert response.status_code == 200
 
-# Test for /get_variables_id with cve_enfermedad parameter endpoint
+# Test for /variables_id with EN400 parameter endpoint
 def test_get_variables_id(client):
-    response = client.get("/variables/id?id=cve_enfermedad")
+    response = client.get("/variables/id?id=EN400")
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
     assert type(data) == list
-    assert any(enfermedad["id"] == 1 and enfermedad["level_id"] == 3 for enfermedad in data)
-    assert any('filter_fields' in enfermedad["data"] and 'available_grids' in enfermedad["data"] for enfermedad in data)
-    with pytest.raises(AssertionError):
-        assert any(enfermedad["id"] == "E000" and enfermedad["level_id"] == 1 for enfermedad in data)
+    assert any(enfermedad["id"] == "EN400" and enfermedad["data"][2] == "(35-1397]" for enfermedad in data)
+
+# Test for /variables_id with GR6200 parameter endpoint
+def test_get_variables_id_gr(client):
+    response = client.get("/variables/id?id=GR6200")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    assert type(data) == list
+    assert any(enfermedad["level_id"] == "GR6200-9" and enfermedad["data"][2] == "(2-3]" for enfermedad in data)
 
 def test_clean_csv_in_chunks(client):
     file_content = "tests/csvs/Prueba1.csv"
