@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from io import StringIO
 import tempfile
 import json
+import time
 
 from os import listdir, remove
 from os.path import join, exists
@@ -71,6 +72,24 @@ def init_db():
                 SELECT * FROM 'duckdb_files/RAWDATA.parquet';
             """)
             db_columns_to_lowercase("RAWDATA", db_connection)
+
+            #COVAR table creation
+            #########################
+            db_connection.sql("""
+                COPY (SELECT *, CAST(CVEGEO AS VARCHAR) AS CVEGEO 
+                FROM read_csv_auto('cleanedCSV/*_cov.csv', auto_detect=true, header=true))
+                TO 'duckdb_files/RAWCOVAR.parquet' (FORMAT PARQUET);
+            """)
+            db_connection.sql("""
+                CREATE OR REPLACE TABLE RAWCOVAR AS
+                SELECT * FROM 'duckdb_files/RAWCOVAR.parquet';
+            """)
+            db_columns_to_lowercase("RAWCOVAR", db_connection)
+
+
+            
+            #########################
+
 
             #POPULATION table creation
             #########################
@@ -318,6 +337,20 @@ async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_d
             raise HTTPException(status_code=400, detail="Invalid input: year and table are required")
         result = con.sql(f"SELECT * FROM {table} WHERE Anio={year};").fetchall()
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
+
+@app.get("/covar_test")
+async def covar_test(categoria: str, con: DuckDBConn = Depends(get_db)):
+    try:
+        st = round(time.time() * 1000)
+        result = con.sql(f"SELECT DISTINCT cvegeo, categoria FROM RAWCOVAR WHERE categoria= '{categoria}';").fetchall()
+        result2 = []
+        for res in result:
+            result2 += con.sql(f"SELECT DISTINCT * FROM DEFUNCIONES WHERE cvegeo = {res[0]} LIMIT 10;").fetchall()
+        end = round(time.time() * 1000)
+        print(end - st)
+        return result2
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
