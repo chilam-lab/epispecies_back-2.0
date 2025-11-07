@@ -341,13 +341,13 @@ async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_d
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/covar_test")
-async def covar_test(categoria: str, con: DuckDBConn = Depends(get_db)):
+async def covar_test(categoria: str, anio : str, con: DuckDBConn = Depends(get_db)):
     try:
         st = round(time.time() * 1000)
         result = con.sql(f"SELECT DISTINCT cvegeo, categoria FROM RAWCOVAR WHERE categoria= '{categoria}';").fetchall()
         result2 = []
         for res in result:
-            result2 += con.sql(f"SELECT DISTINCT * FROM DEFUNCIONES WHERE cvegeo = {res[0]} LIMIT 10;").fetchall()
+            result2 += con.sql(f"SELECT DISTINCT * FROM DEFUNCIONES WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
         end = round(time.time() * 1000)
         print(end - st)
         return result2
