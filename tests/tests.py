@@ -36,6 +36,40 @@ def in_memory_db():
             (3, 'Doe', 'Heart Disease', '2020', 'G3', 'Group3', 'E2', 'C3', 'Cause3');
     """)
     conn.execute("""
+        CREATE TABLE RAWCOVAR (
+            cvegeo INTEGER,
+            anio VARCHAR,
+            mes INTEGER,
+            indice VARCHAR,
+            valor INTEGER,
+            categoria VARCHAR
+        );
+        INSERT INTO RAWCOVAR VALUES
+            (1, '2015', 2, 'I1', 1, 'C1'),
+            (2, '2013', 12, 'I2', 2, 'C2'),
+            (1, '2019', 8, 'I3', 9, 'C1'),
+            (1, '2019', 10, 'I4', 12, 'C1'),
+            (1, '2015', 6, 'I5', 120, 'C3');
+    """)
+    conn.execute("""
+        CREATE TABLE DEFUNCIONES (
+            id INTEGER,
+            name VARCHAR,
+            cause VARCHAR,
+            anio VARCHAR,
+            CVE_Grupo VARCHAR,
+            Grupo VARCHAR,
+            CVE_Enfermedad VARCHAR,
+            CVE_Causa_def VARCHAR,
+            Causa_def VARCHAR,
+            cvegeo INTEGER
+        );
+        INSERT INTO DEFUNCIONES VALUES
+            (1, 'John', 'Heart Disease', '2019', 'G1', 'Group1', 'E1', 'C1', 'Cause1', 1),
+            (2, 'Jane', 'Cancer', '2019', 'G2', 'Group2', 'E1', 'C2', 'Cause2', 1),
+            (3, 'Doe', 'Heart Disease', '2015', 'G3', 'Group3', 'E2', 'C3', 'Cause3', 1);
+    """)
+    conn.execute("""
         CREATE TABLE ENFERMEDADES (
             cve_grupo VARCHAR,
             grupo VARCHAR,
@@ -301,6 +335,18 @@ def test_get_third_class_missing_params(client: TestClient):
     response = client.get("/get_third_level_class")
     assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
     assert any(error["type"] == "missing" for error in response.json()["detail"]), "Expected 'missing' error type"
+
+# Test for /covar_test endpoint
+def test_covar_test(client):
+    response = client.get("/covar_test?categoria=C1&anio=2019")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    assert type(data) == list
+    num_of_anio = 0
+    for counter in data:
+        num_of_anio += counter.count('2019')
+    assert num_of_anio == 2
 
 # Test for /get_population endpoint
 def test_get_population(client):
