@@ -341,16 +341,52 @@ async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_d
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/covar_test")
-async def covar_test(categoria: str, anio : str, con: DuckDBConn = Depends(get_db)):
+async def covar_test(categoria: str, anio : str, cve_estado : str | None = None, con: DuckDBConn = Depends(get_db)):
     try:
+        has_cve_estado = False
         st = round(time.time() * 1000)
-        result = con.sql(f"SELECT DISTINCT cvegeo, categoria FROM RAWCOVAR WHERE categoria= '{categoria}';").fetchall()
-        result2 = []
-        for res in result:
-            result2 += con.sql(f"SELECT DISTINCT * FROM DEFUNCIONES WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
+        distint_cvegeo = con.sql(f"SELECT DISTINCT cvegeo, categoria FROM RAWCOVAR WHERE categoria= '{categoria}';").fetchall()
+        result = []
+
+        #Variables for n
+        q_estado = []
+        pob_n = []
+        n = 0
+        if cve_estado:
+            has_cve_estado = True
+
+        #Variables for nx
+        query_nx = []
+        nx = 0
+        
+        for res in distint_cvegeo:
+            result += con.sql(f"SELECT DISTINCT * FROM DEFUNCIONES WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
+            #Adding data to query_nx, using this query for nx value
+            query_nx += con.sql(f"SELECT cvegeo, anio, poblacion FROM POPULATION WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
+            #Adding data to q_estado, using this query for n value
+            if has_cve_estado:
+                q_estado += con.sql(f"SELECT cvegeo, cve_estado FROM ESTADO_MUN WHERE cve_estado= {cve_estado} AND cvegeo = {res[0]};").fetchall()
+            else:
+                q_estado += con.sql(f"SELECT cvegeo FROM ESTADO_MUN WHERE cvegeo = {res[0]};").fetchall()
+        
+        #getting the values of all population using q_estado query, then using sum to obtain the value for n
+        for pob in q_estado:
+            pob_n += con.sql(f"SELECT cvegeo, poblacion FROM POPULATION WHERE cvegeo = {pob[0]};").fetchall()
+        for pob_list in pob_n:
+            n += sum(i for i in pob_list if isinstance(i, int))
+        
+        #getting the value of nx, using query_nx third value
+        for nx_list in query_nx:
+            nx += nx_list[2]
+        
+        #getting the value of ncx, using the rows of the result query
+        ncx = len(result)
+
+
         end = round(time.time() * 1000)
         print(end - st)
-        return result2
+        union_val_test = [("poblacion total (n): ", n), ("poblacion que vive en la entidad (nx): ", nx), ("No. de casos (ncx): ", ncx)]
+        return union_val_test
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
