@@ -33,7 +33,7 @@ def get_csv_in_directory_to_clean() -> bool:
                 name_of_cleaned_file = name_of_cleaned_file[:-4] + pop_suffix
             elif file.startswith("CVE_Metro"):
                 name_of_cleaned_file = name_of_cleaned_file[:-4] + mps_suffix
-            elif file.startswith("Cov"):
+            elif file.startswith("indices"):
                 name_of_cleaned_file = name_of_cleaned_file[:-4] + cov_suffix
             else:
                 name_of_cleaned_file = name_of_cleaned_file[:-4] + db_suffix
