@@ -222,8 +222,6 @@ def init_db():
                 FROM RAWDATA GROUP BY id, CVE_Causa_def, Anio, CVEGEO;
             """)
             db_columns_to_lowercase("DATA_VAR_CAUSEDEATH", db_connection)
-            
-            #id, cve, anio, cvegeo, count(*)
             ###########################
 
             db_connection.sql("CREATE INDEX IF NOT EXISTS id_enfermedad ON ENFERMEDADES (CVE_Enfermedad, CVE_Grupo, CVE_Causa_def);")
