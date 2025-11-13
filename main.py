@@ -384,7 +384,7 @@ async def covar_test(categoria: str, anio : str, cve_estado : str | None = None,
 
 
         end = round(time.time() * 1000)
-        print(end - st)
+        print("Miliss to finish: " + str(end - st))
         union_val_test = [("poblacion total (n): ", n), ("poblacion que vive en la entidad (nx): ", nx), ("No. de casos (ncx): ", ncx)]
         return union_val_test
     except Exception as e:
