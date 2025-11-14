@@ -339,52 +339,102 @@ async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_d
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/covar_test")
-async def covar_test(categoria: str, anio : str, cve_estado : str | None = None, con: DuckDBConn = Depends(get_db)):
+async def covar_test(categoria: str, anio : str, cve_estado : str | None = None, 
+                     edad : str | None = None, genero : str | None = None, con: DuckDBConn = Depends(get_db)):
     try:
         has_cve_estado = False
+        has_edad = False
+        has_genero = False
         st = round(time.time() * 1000)
         distint_cvegeo = con.sql(f"SELECT DISTINCT cvegeo, categoria FROM RAWCOVAR WHERE categoria= '{categoria}';").fetchall()
         result = []
+        pob_total = []
+        query_params = ""
+    
+        #Add to query the optional parameters, if exists
+        n = 0
+        list_mun = []
+        if cve_estado:
+            has_cve_estado = True
+            query_params = query_params + f" AND cve_estado = {cve_estado}"
+        if edad:
+            has_edad = True
+            query_params = query_params + f" AND edad = {edad}"
+        if genero:
+            has_genero = True
+            query_params = query_params + f" AND genero = '{genero}'"
 
         #Variables for n
         q_estado = []
         pob_n = []
+        query_for_pop_total = []
         n = 0
-        if cve_estado:
-            has_cve_estado = True
+            
 
         #Variables for nx
         query_nx = []
         nx = 0
         
         for res in distint_cvegeo:
-            result += con.sql(f"SELECT DISTINCT * FROM DEFUNCIONES WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
-            #Adding data to query_nx, using this query for nx value
-            query_nx += con.sql(f"SELECT cvegeo, anio, poblacion FROM POPULATION WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
-            #Adding data to q_estado, using this query for n value
+            if query_params == "":
+                pob_total += con.sql(f"SELECT DISTINCT anio, cvegeo, total_population FROM POPULATION_TOTAL WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
+                continue
+
             if has_cve_estado:
-                q_estado += con.sql(f"SELECT cvegeo, cve_estado FROM ESTADO_MUN WHERE cve_estado= {cve_estado} AND cvegeo = {res[0]};").fetchall()
-            else:
-                q_estado += con.sql(f"SELECT cvegeo FROM ESTADO_MUN WHERE cvegeo = {res[0]};").fetchall()
+                list_mun += con.sql(f"SELECT DISTINCT cvegeo, cve_estado FROM ESTADO_MUN WHERE cve_estado= {cve_estado} AND cvegeo = {res[0]};").fetchall()
+
+            if has_edad and not has_genero: #Only edad
+                query_for_pop_total += con.sql(f"SELECT DISTINCT cvegeo, anio, edad_gpo, poblacion FROM POPULATION_AGE WHERE cvegeo = {res[0]} AND anio={anio} AND edad_gpo = '{edad}';").fetchall()
+            elif has_genero and not has_edad: #Only genero
+                query_for_pop_total += con.sql(f"SELECT DISTINCT cvegeo, anio, sexo, poblacion FROM POPULATION_GENDER WHERE cvegeo = {res[0]} AND anio={anio} AND sexo = '{genero}';").fetchall()
+            else: #Both
+                query_for_pop_total += con.sql(f"SELECT DISTINCT cvegeo, anio, sexo, poblacion, edad_gpo FROM POPULATION WHERE cvegeo = {res[0]} AND anio={anio} AND sexo = '{genero}' AND edad_gpo = '{edad}';").fetchall()
+            #result += con.sql(f"SELECT DISTINCT * FROM DEFUNCIONES WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
+
+
+
+
+            #result += con.sql(f"SELECT DISTINCT * FROM DEFUNCIONES WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
+            #Adding data to query_nx, using this query for nx value
+            #query_nx += con.sql(f"SELECT cvegeo, anio, poblacion FROM POPULATION WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
+            #Adding data to q_estado, using this query for n value
+            #if has_cve_estado:
+            #    q_estado += con.sql(f"SELECT cvegeo, cve_estado FROM ESTADO_MUN WHERE cve_estado= {cve_estado} AND cvegeo = {res[0]};").fetchall()
+            #else:
+            #    q_estado += con.sql(f"SELECT cvegeo FROM ESTADO_MUN WHERE cvegeo = {res[0]};").fetchall()
         
+        if len(list_mun) != 0 and len(query_for_pop_total) == 0:
+            for cvegeo in list_mun:
+                pob_total += con.sql(f"SELECT DISTINCT anio, cvegeo, total_population FROM POPULATION_TOTAL WHERE cvegeo = {cvegeo[0]} AND anio={anio};").fetchall()
+    
+        if len(query_for_pop_total) != 0:
+            for cvegeo in query_for_pop_total:
+                if has_cve_estado and has_edad and has_genero:
+                    pob_total += con.sql(f"SELECT DISTINCT cvegeo, anio, poblacion, sexo, edad_gpo FROM POPULATION WHERE cvegeo = {cvegeo[0]} AND anio={anio} AND sexo = '{genero}' AND edad_gpo = '{edad}'").fetchall()
+                elif not has_cve_estado:
+                    n += cvegeo[3]
+
+        for pop_total_cvegeo in pob_total:
+            n += pop_total_cvegeo[2]
+
         #getting the values of all population using q_estado query, then using sum to obtain the value for n
-        for pob in q_estado:
-            pob_n += con.sql(f"SELECT cvegeo, poblacion FROM POPULATION WHERE cvegeo = {pob[0]};").fetchall()
-        for pob_list in pob_n:
-            n += sum(i for i in pob_list if isinstance(i, int))
+        #for pob in q_estado: 
+        #    pob_n += con.sql(f"SELECT cvegeo, poblacion FROM POPULATION WHERE cvegeo = {pob[0]};").fetchall()
+        #for pob_list in pob_n:
+        #    n += sum(i for i in pob_list if isinstance(i, int))
         
         #getting the value of nx, using query_nx third value
-        for nx_list in query_nx:
-            nx += nx_list[2]
+        #for nx_list in query_nx:
+        #    nx += nx_list[2]
         
         #getting the value of ncx, using the rows of the result query
-        ncx = len(result)
+        #ncx = len(result)
 
 
         end = round(time.time() * 1000)
         print("Miliss to finish: " + str(end - st))
-        union_val_test = [("poblacion total (n): ", n), ("poblacion que vive en la entidad (nx): ", nx), ("No. de casos (ncx): ", ncx)]
-        return union_val_test
+        #union_val_test = [("poblacion total (n): ", n), ("poblacion que vive en la entidad (nx): ", nx), ("No. de casos (ncx): ", ncx)]
+        return n
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
