@@ -346,8 +346,8 @@ async def covar_test(categoria: str, anio : str, cve_estado : str | None = None,
         has_edad = False
         has_genero = False
         st = round(time.time() * 1000)
-        distint_cvegeo = con.sql(f"SELECT DISTINCT cvegeo, categoria FROM RAWCOVAR WHERE categoria= '{categoria}';").fetchall()
-        result = []
+        distint_cvegeo = con.sql(f"SELECT cvegeo, anio, categoria FROM RAWCOVAR WHERE categoria= '{categoria}' AND anio = {anio};").fetchall()
+        def_cvegeo = []
         pob_total = []
         query_params = ""
     
@@ -374,21 +374,24 @@ async def covar_test(categoria: str, anio : str, cve_estado : str | None = None,
         #Variables for nx
         query_nx = []
         nx = 0
+
+        for cvegeo in distint_cvegeo:
+            def_cvegeo += con.sql(f"SELECT DISTINCT cvegeo, anio FROM DEFUNCIONES WHERE cvegeo = {cvegeo[0]} AND anio={anio};").fetchall()
         
-        for res in distint_cvegeo:
+        for cvegeo in def_cvegeo:
             if query_params == "":
-                pob_total += con.sql(f"SELECT DISTINCT anio, cvegeo, total_population FROM POPULATION_TOTAL WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
+                pob_total += con.sql(f"SELECT DISTINCT anio, cvegeo, total_population FROM POPULATION_TOTAL WHERE cvegeo = {cvegeo[0]} AND anio={anio};").fetchall()
                 continue
 
             if has_cve_estado:
-                list_mun += con.sql(f"SELECT DISTINCT cvegeo, cve_estado FROM ESTADO_MUN WHERE cve_estado= {cve_estado} AND cvegeo = {res[0]};").fetchall()
+                list_mun += con.sql(f"SELECT DISTINCT cvegeo, cve_estado FROM ESTADO_MUN WHERE cve_estado= {cve_estado} AND cvegeo = {cvegeo[0]};").fetchall()
 
-            if has_edad and not has_genero: #Only edad
-                query_for_pop_total += con.sql(f"SELECT DISTINCT cvegeo, anio, edad_gpo, poblacion FROM POPULATION_AGE WHERE cvegeo = {res[0]} AND anio={anio} AND edad_gpo = '{edad}';").fetchall()
-            elif has_genero and not has_edad: #Only genero
-                query_for_pop_total += con.sql(f"SELECT DISTINCT cvegeo, anio, sexo, poblacion FROM POPULATION_GENDER WHERE cvegeo = {res[0]} AND anio={anio} AND sexo = '{genero}';").fetchall()
+            if has_edad and not has_genero: #Only edad 
+                query_for_pop_total += con.sql(f"SELECT DISTINCT cvegeo, anio, edad_gpo, poblacion FROM POPULATION_AGE WHERE cvegeo = {cvegeo[0]} AND anio={anio} AND edad_gpo = '{edad}';").fetchall()
+            elif has_genero and not has_edad: #Only genero 
+                query_for_pop_total += con.sql(f"SELECT DISTINCT cvegeo, anio, sexo, poblacion FROM POPULATION_GENDER WHERE cvegeo = {cvegeo[0]} AND anio={anio} AND sexo = '{genero}';").fetchall()
             else: #Both
-                query_for_pop_total += con.sql(f"SELECT DISTINCT cvegeo, anio, sexo, poblacion, edad_gpo FROM POPULATION WHERE cvegeo = {res[0]} AND anio={anio} AND sexo = '{genero}' AND edad_gpo = '{edad}';").fetchall()
+                query_for_pop_total += con.sql(f"SELECT DISTINCT cvegeo, anio, sexo, poblacion, edad_gpo FROM POPULATION WHERE cvegeo = {cvegeo[0]} AND anio={anio} AND sexo = '{genero}' AND edad_gpo = '{edad}';").fetchall()
             #result += con.sql(f"SELECT DISTINCT * FROM DEFUNCIONES WHERE cvegeo = {res[0]} AND anio={anio};").fetchall()
 
 
