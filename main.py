@@ -369,12 +369,59 @@ async def covar_test(categoria: str, anio : str,
         if cve_causa_def is not None:
             nc_query += " AND cve_causa_def = ?"
             params.append(cve_causa_def)
+        # validar que solo venga uno de los 2 no los 2
+        if cve_estado is not None: ## SI FUNCIONA
+            nc_query += " AND cve_estado = ?"
+            params.append(cve_estado)
+        if cve_metropoli is not None: #POR PROBAR
+            nc_query += " AND cve_metropoli = ?"
+            params.append(cve_metropoli)
         nc = con.sql(nc_query, params=params).fetchall()
         
         print("😱")
         print(nc)
+
+
+
+
+
+
         # ------N-------
-        n = con.sql(f"SELECT DISTINCT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = {anio};").fetchall()
+
+        n_query = f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = {anio}"
+        params = [anio]
+        n = 0  # Initialize n
+        
+        # Check which parameter is provided (only one should be provided)
+        if cve_estado is not None:
+            # Sum population for all municipalities in the state
+            cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM ESTADO_MUN WHERE cve_estado = {cve_estado};").fetchall()
+            print(len(cvegeo_list))
+            print(cvegeo_list)
+            for cvegeo in cvegeo_list:
+                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{anio}';").fetchone()
+                print(result)
+                if result and result[0] is not None:
+                    n += result[0]
+        #     # Sum population for all municipalities in the metropolitan area
+        #     result = con.sql(f"""
+        #         SELECT SUM(p.poblacion) 
+        #         FROM POPULATION p
+        #         JOIN METROPOLI m ON p.cvegeo = m.cvegeo
+        #         WHERE m.cve_metropoli = {cve_metropoli}
+        #     """).fetchone()
+        #    
+        #     if result and result[0] is not None:
+        #         n = result[0]
+            
+        else:
+            result = con.sql(n_query).fetchone()
+            
+            if result and result[0] is not None:
+                n = result[0]
+        
+
+        print("🌸")
         print(n)
         #
         # end = round(time.time() * 1000)
