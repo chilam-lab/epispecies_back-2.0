@@ -243,7 +243,7 @@ def init_db():
 
             db_connection.sql("""
                 CREATE OR REPLACE TABLE METROPOLI AS
-                SELECT DISTINCT CVE_Metropoli, Metropolis
+                SELECT DISTINCT CVE_Metropoli, Metropolis, CAST(CVEGEO AS VARCHAR) AS CVEGEO
                 FROM RAWDATA;
             """)
             db_columns_to_lowercase("METROPOLI", db_connection)
@@ -370,6 +370,8 @@ async def covar_test(categoria: str, anio : str,
             nc_query += " AND cve_causa_def = ?"
             params.append(cve_causa_def)
         # validar que solo venga uno de los 2 no los 2
+        if cve_estado and cve_metropoli:
+            return HTTPException(status_code=400, detail=f"Invalid parameters: cve_estado and cve_metropoli cannot be on the same request.")
         if cve_estado is not None: ## SI FUNCIONA
             nc_query += " AND cve_estado = ?"
             params.append(cve_estado)
@@ -403,16 +405,23 @@ async def covar_test(categoria: str, anio : str,
                 print(result)
                 if result and result[0] is not None:
                     n += result[0]
-        #     # Sum population for all municipalities in the metropolitan area
-        #     result = con.sql(f"""
-        #         SELECT SUM(p.poblacion) 
-        #         FROM POPULATION p
-        #         JOIN METROPOLI m ON p.cvegeo = m.cvegeo
-        #         WHERE m.cve_metropoli = {cve_metropoli}
-        #     """).fetchone()
-        #    
-        #     if result and result[0] is not None:
-        #         n = result[0]
+            
+
+        elif cve_metropoli is not None:
+            # Sum population for all municipalities in the metropolitan area
+            cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
+            print(len(cvegeo_list))
+            print(cvegeo_list)
+            for cvegeo in cvegeo_list:
+                result = con.sql(f"""
+                SELECT SUM(p.poblacion) 
+                FROM POPULATION p
+                JOIN METROPOLI m ON p.cvegeo = m.cvegeo
+                WHERE m.cve_metropoli = '{cve_metropoli}'
+            """).fetchone()
+                print(result)
+                if result and result[0] is not None:
+                    n += result[0]
             
         else:
             result = con.sql(n_query).fetchone()
