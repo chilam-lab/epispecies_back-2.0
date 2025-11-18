@@ -413,12 +413,7 @@ async def covar_test(categoria: str, anio : str,
             print(len(cvegeo_list))
             print(cvegeo_list)
             for cvegeo in cvegeo_list:
-                result = con.sql(f"""
-                SELECT SUM(p.poblacion) 
-                FROM POPULATION p
-                JOIN METROPOLI m ON p.cvegeo = m.cvegeo
-                WHERE m.cve_metropoli = '{cve_metropoli}'
-            """).fetchone()
+                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{anio}';").fetchone()
                 print(result)
                 if result and result[0] is not None:
                     n += result[0]
