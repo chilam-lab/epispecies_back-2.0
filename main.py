@@ -368,11 +368,20 @@ async def covar_test(categoria: str, anio : str,
         print(categories_list)
         print("🍕xxxx")
 
+        test = con.sql(f"SELECT DISTINCT * FROM RAWCOVAR WHERE anio = {anio} AND cvegeo=21021").fetchall()
+        v = [row[0] for row in test]
+        print("🎏")
+        print("🎏")
+        print("🎏")
+        print(test)
+        print(v)
+        print("🎏")
+        print("🎏")
+        print("🎏")
+        print("🎏")
+
         mun_total = con.sql(f"SELECT DISTINCT cvegeo FROM POPULATION_TOTAL WHERE anio = {anio};").fetchall()
         a = [row[0] for row in mun_total]
-        print("🎏")
-        print(len(a))
-        print("🎏")
 
 
         #------N-------
