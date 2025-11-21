@@ -18,7 +18,7 @@ import json
 import time
 from typing import Annotated
 
-from os import listdir, remove
+from os import listdir, remove, wait
 from os.path import join, exists
 import duckdb
 
@@ -357,10 +357,133 @@ async def covar_test(categoria: str, anio : str,
         filterdeaths = []
     
         #First, we search in RAWCOVAR table for the cvegeo value of the category
-        # query_distint_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = {categoria}' AND anio = {anio};").fetchall()
-        # print(query_distint_cvegeo)
+        query_distinct_cvegeo = con.sql(f"SELECT cvegeo FROM RAWCOVAR WHERE categoria = '{categoria}' AND anio = {anio};").fetchall()
+        cvegeo_list = [row[0] for row in query_distinct_cvegeo]
+
+        #------NCX----
+        ncx_query = "SELECT COUNT(*) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ? AND cvegeo IN (" + ",".join(["?"] * len(cvegeo_list)) + ")"
+        print(ncx_query)
+        params = [cve_enfermedad, anio] + cvegeo_list
+        
+        if cve_grupo is not None:
+            ncx_query += " AND cve_grupo = ?"
+            params.append(cve_grupo)
+        
+        if cve_causa_def is not None:
+            ncx_query += " AND cve_causa_def = ?"
+            params.append(cve_causa_def)
+        # agregar esta validacíon al principio y eliminar la repetida
+        if cve_estado and cve_metropoli:
+            raise HTTPException(status_code=400, detail="Invalid parameters: cve_estado and cve_metropoli cannot be in the same request.")
+        
+        if cve_estado is not None:
+            ncx_query += " AND cve_estado = ?"
+            params.append(cve_estado)
+        
+        if cve_metropoli is not None:
+            ncx_query += " AND cve_metropoli = ?"
+            params.append(cve_metropoli)
+        
+        if edad is not None:
+            ncx_query += " AND edad_gpo = ?"
+            params.append(edad)
+        
+        if genero is not None:
+            ncx_query += " AND sexo = ?"
+            params.append(genero)
+        
+        # Execute the query
+        ncx = con.sql(ncx_query, params=params).fetchone()[0]
+
+        print("😱")
+        print(ncx)
+        
+
+
+
+
+        #-----NX-----
+        # cvegeo_filtered_query = ncx_query.replace("SELECT COUNT(*)", "SELECT DISTINCT cvegeo")
+        # cvegeo_filtered_result = con.sql(cvegeo_filtered_query, params=params).fetchall()
+        # cvegeo_filtered_list = [row[0] for row in cvegeo_filtered_result]
+        # print("🌈")
+        # print(cvegeo_filtered_list)
         #
-        # NC
+        # nx_query = "SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = ? AND cvegeo IN (" + ",".join(["?"] * len(cvegeo_filtered_list)) + ")"
+        # print(nx_query)
+        # print("🌈")
+        #
+        # # Build the params list
+        # nx_params = [anio] + cvegeo_filtered_list
+        #
+        # # Execute the query
+        # result = con.sql(nx_query, params=nx_params).df()
+        # nx = result.iloc[0, 0] if not result.empty else 0
+        # print("🎯 Total population:")
+        #
+        # print(nx)
+        ncx_query = "SELECT DISTINCT cvegeo FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ? AND cvegeo IN (" + ",".join(["?"] * len(cvegeo_list)) + ")"
+        print(ncx_query)
+        params = [cve_enfermedad, anio] + cvegeo_list
+        
+        if cve_grupo is not None:
+            ncx_query += " AND cve_grupo = ?"
+            params.append(cve_grupo)
+        
+        if cve_causa_def is not None:
+            ncx_query += " AND cve_causa_def = ?"
+            params.append(cve_causa_def)
+        # agregar esta validacíon al principio y eliminar la repetida
+        if cve_estado and cve_metropoli:
+            raise HTTPException(status_code=400, detail="Invalid parameters: cve_estado and cve_metropoli cannot be in the same request.")
+        
+        if cve_estado is not None:
+            ncx_query += " AND cve_estado = ?"
+            params.append(cve_estado)
+        
+        if cve_metropoli is not None:
+            ncx_query += " AND cve_metropoli = ?"
+            params.append(cve_metropoli)
+        
+        if edad is not None:
+            ncx_query += " AND edad_gpo = ?"
+            params.append(edad)
+        
+        if genero is not None:
+            ncx_query += " AND sexo = ?"
+            params.append(genero)
+        
+        # Execute the query
+        nx_cvegeo = con.sql(ncx_query, params=params).fetchall()
+
+        cvegeo_filtered_list = [row[0] for row in nx_cvegeo]
+        print("<<😱>>")
+        print(nx_cvegeo)
+        print("-😱-")
+
+        nx_query = "SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = ? AND cvegeo IN (" + ",".join(["?"] * len(cvegeo_filtered_list)) + ")"
+        print(nx_query)
+        print("🌈")
+        
+        # Build the params list
+        nx_params = [anio] + cvegeo_filtered_list
+        
+        # Execute the query
+        result = con.sql(nx_query, params=nx_params).df()
+        nx = result.iloc[0, 0] if not result.empty else 0
+        print("🎯 Total population:")
+        
+        print(nx)
+
+
+
+
+
+
+
+
+
+        # ----------NC-----------
         nc_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ?"
         params = [cve_enfermedad, anio]
         if cve_grupo is not None:
@@ -382,10 +505,6 @@ async def covar_test(categoria: str, anio : str,
         
         print("😱")
         print(nc)
-
-
-
-
 
 
         # ------N-------
@@ -431,7 +550,7 @@ async def covar_test(categoria: str, anio : str,
         # end = round(time.time() * 1000)
         # print("Miliss to finish: " + str(end - st))
         #union_val_test = [("poblacion total (n): ", n), ("poblacion que vive en la entidad (nx): ", nx), ("No. de casos (ncx): ", ncx)]
-        return []
+        return {"n": n, "nc": nc[0][0], "ncx": ncx[0][0], "nx":nx}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
