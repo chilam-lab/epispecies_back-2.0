@@ -457,7 +457,9 @@ async def covar_test(categoria: str, anio : str,
 
         cvetest = []
         xxx = 0
+        helper = []
         for category in categories_list:
+            # --------lista de cvegeo de la categoria por año--------
             query_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = '{category}' AND anio = {anio};").fetchall()
             cvegeo_list = [str(row[0]) for row in query_distinct_cvegeo]
             cvetest += cvegeo_list
@@ -466,32 +468,31 @@ async def covar_test(categoria: str, anio : str,
             print("LISTAAAAA")
 
             # #------NCX----
-            ncx_query1 = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ? AND cvegeo = ANY(CAST(? AS VARCHAR[]))"
-            print(ncx_query1)
-            params43 = [cve_enfermedad, anio, cvegeo_list]
+            ncx_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ? AND cvegeo = ANY(CAST(? AS VARCHAR[]))"
+            params = [cve_enfermedad, anio, cvegeo_list]
             
-            # if cve_grupo is not None:
-            #     ncx_query += " AND cve_grupo = ?"
-            #     params.append(cve_grupo)
-            # if cve_causa_def is not None:
-            #     ncx_query += " AND cve_causa_def = ?"
-            #     params.append(cve_causa_def)
-            # if cve_estado and cve_metropoli:
-            #     raise HTTPException(status_code=400, detail="Invalid parameters: cve_estado and cve_metropoli cannot be in the same request.")
-            # if cve_estado is not None:
-            #     ncx_query += " AND cve_estado = ?"
-            #     params.append(cve_estado)
-            # if cve_metropoli is not None:
-            #     ncx_query += " AND cve_metropoli = ?"
-            #     params.append(cve_metropoli)
-            # if edad is not None:
-            #     ncx_query += " AND edad_gpo = ?"
-            #     params.append(edad)
-            # if genero is not None:
-            #     ncx_query += " AND sexo = ?"
-            #     params.append(genero)
-            #
-            ncx = con.sql(ncx_query1, params=params43).fetchone()[0]
+            if cve_grupo is not None:
+                ncx_query += " AND cve_grupo = ?"
+                params.append(cve_grupo)
+            if cve_causa_def is not None:
+                ncx_query += " AND cve_causa_def = ?"
+                params.append(cve_causa_def)
+            if cve_estado and cve_metropoli:
+                raise HTTPException(status_code=400, detail="Invalid parameters: cve_estado and cve_metropoli cannot be in the same request.")
+            if cve_estado is not None:
+                ncx_query += " AND cve_estado = ?"
+                params.append(cve_estado)
+            if cve_metropoli is not None:
+                ncx_query += " AND cve_metropoli = ?"
+                params.append(cve_metropoli)
+            if edad is not None:
+                ncx_query += " AND edad_gpo = ?"
+                params.append(edad)
+            if genero is not None:
+                ncx_query += " AND sexo = ?"
+                params.append(genero)
+            
+            ncx = con.sql(ncx_query, params=params).fetchone()[0]
             
             print("😱")
             print(ncx)
@@ -499,26 +500,40 @@ async def covar_test(categoria: str, anio : str,
         
 
             #-----NX-----
-            # cvegeo_filtered_query = ncx_query1.replace("SELECT COUNT(*)", "SELECT DISTINCT cvegeo")
-            # cvegeo_filtered_result = con.sql(cvegeo_filtered_query, params=params43).fetchall()
-            # cvegeo_filtered_list = [row[0] for row in cvegeo_filtered_result]
-            # helper_cveo_list += cvegeo_filtered_list
-            # print("🌈xxxxx")
-            # print(cvegeo_filtered_list)
-            # print(len(cvegeo_filtered_list))
-            # print("🌈xxxx")
+            ## RAWCOVAR
+            ## DEFUNCIONES
+            # son las defunciones que tienen la variable
+            population_filtered_query = ncx_query.replace("SELECT COUNT(cvegeo)", "SELECT DISTINCT cvegeo")
+            population_result = con.sql(population_filtered_query, params=params).fetchall()
+
+            print("QUERY")
+            print(population_filtered_query)
+            print("PARAMS")
+            print(params)
+            print("NUMERO")
+            print(len(population_result))
+            population_cvegeo = [str(row[0]) for row in population_result]
+            
             # #
-            # # nx_query = "SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = ? AND cvegeo IN (" + ",".join(["?"] * len(cvegeo_filtered_list)) + ")"
-            # # print(nx_query)
-            # # print("🌈")
-            # #
-            # # # Build the params list
-            # # nx_params = [anio] + cvegeo_filtered_list
-            # #
-            # # # Execute the query
-            # # result = con.sql(nx_query, params=nx_params).df()
-            # # nx = result.iloc[0, 0] if not result.empty else 0
-            # # print("🎯 Total population:")
+            placeholders = ','.join(['?' for _ in population_cvegeo])
+            # nx_query = "SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = ? AND cvegeo = ANY(CAST(? AS VARCHAR[]))"
+            nx_query = f"""
+                SELECT SUM(total_population) 
+                FROM POPULATION_TOTAL 
+                WHERE anio = ? 
+                AND cvegeo IN ({placeholders})
+            """
+            nx_params = [anio] + cvegeo_list
+            print(nx_query)
+            print("🌈")
+            
+            # Build the params list
+            # nx_params = [anio, population_cvegeo]
+            
+            # Execute the query
+            result = con.sql(nx_query, params=nx_params).fetchone()[0]
+            print("🎯 Total population:")
+            helper.append({"category": category,"ncx": ncx, "nx":result})
             # #
             # # print(nx)
             # name = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = '{categoria}' AND anio = {anio};").fetchall()
@@ -617,9 +632,10 @@ async def covar_test(categoria: str, anio : str,
 
         print("-----xxx----")
         print(xxx)
+        print(helper)
         print("xxx")
         print(len(cvetest))
-        print(list(set(index_list1) - set(cvetest)))
+        # print(list(set(index_list1) - set(cvetest)))
         print("^^^^^^^^^^^")
         # print(helper_cveo_list)
         # print(len(helper_cveo_list))
