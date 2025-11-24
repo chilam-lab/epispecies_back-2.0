@@ -358,17 +358,40 @@ async def covar_test(categoria: str, anio : str,
 
         index_distinct_cvegeo = con.sql(f"SELECT DISTINCT indice FROM RAWCOVAR WHERE categoria = '{categoria}' AND anio = {anio};").fetchall()
         index_list = [row[0] for row in index_distinct_cvegeo]
-        print("🍕")
+        print("🍕🥮🥮🥮🥮🥮")
         print(index_list)
-        print("🍕")
+        print(len(index_list))
+        print("🍕🥮🥮🥮🥮🥮")
+        index_distinct_cvegeo1 = con.sql(f"SELECT DISTINCT * FROM RAWCOVAR WHERE anio = {anio} AND indice = '{index_list[0]}';").fetchall()
+        index_list1 = [row[0] for row in index_distinct_cvegeo1]
+        print(index_list1)
+        #-------2469 mun--------
+        print(len(index_list1))
+        print("🍕🥮🥮🥮🥮🥮")
+
+ 
 
         categories_distinct_cvegeo = con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE indice = '{index_list[0]}' AND anio = {anio}; ").fetchall()
         categories_list = [row[0] for row in categories_distinct_cvegeo]
         print("🍕xxxxxx")
-        print(categories_list)
+        print(len(categories_list))
         print("🍕xxxx")
+        
+        cvetest = []
+        for cat in categories_list:
+            categories_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = '{cat}' AND anio = {anio}; ").fetchall()
+            muns = [row[0] for row in categories_distinct_cvegeo]
+            cvetest += muns
+
+        print("🍕MUNS")
+        print(len(cvetest))
+        # print(index_list1-cvetest)
+        print("🍕MUNS")
+
+
 
         test = con.sql(f"SELECT DISTINCT * FROM RAWCOVAR WHERE anio = {anio} AND cvegeo=21021").fetchall()
+        # test1 = con.sql(f"SELECT DISTINCT * FROM RAWCOVAR WHERE anio = {anio}").fetchall()
         v = [row[0] for row in test]
         print("🎏")
         print("🎏")
