@@ -339,8 +339,8 @@ async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_d
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/covar_test")
-async def covar_test(categoria: str, anio : str, 
+@app.get("/calculate_variables")
+async def covar_test(categoria: str, year : str,
                      cve_enfermedad: str,
                      cve_grupo:str | None = None,
                      cve_causa_def:str | None = None,
@@ -353,26 +353,26 @@ async def covar_test(categoria: str, anio : str,
 
         calc_list = []
 
-        index_distinct_cvegeo = con.sql(f"SELECT DISTINCT indice FROM RAWCOVAR WHERE categoria = '{categoria}' AND anio = {anio};").fetchall()
+        index_distinct_cvegeo = con.sql(f"SELECT DISTINCT indice FROM RAWCOVAR WHERE categoria = '{categoria}' AND anio = {year};").fetchall()
         index_list = [row[0] for row in index_distinct_cvegeo]
 
-        categories_distinct_cvegeo = con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE indice = '{index_list[0]}' AND anio = {anio}; ").fetchall()
+        categories_distinct_cvegeo = con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE indice = '{index_list[0]}' AND anio = {year}; ").fetchall()
         categories_list = [row[0] for row in categories_distinct_cvegeo]
 
         #------N-------
-        n_query = f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = {anio}"
-        params = [anio]
+        n_query = f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = {year}"
+        params = [year]
         n = 0
         if cve_estado is not None:
             cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM ESTADO_MUN WHERE cve_estado = {cve_estado};").fetchall()
             for cvegeo in cvegeo_list:
-                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{anio}';").fetchone()
+                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{year}';").fetchone()
                 if result and result[0] is not None:
                     n += result[0]
         elif cve_metropoli is not None:
             cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
             for cvegeo in cvegeo_list:
-                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{anio}';").fetchone()
+                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{year}';").fetchone()
                 if result and result[0] is not None:
                     n += result[0]
         else:
@@ -382,14 +382,14 @@ async def covar_test(categoria: str, anio : str,
 
        # ----------NC-----------
         nc_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ?"
-        nc_params = [cve_enfermedad, anio]
+        nc_params = [cve_enfermedad, year]
         if cve_grupo is not None:
             nc_query += " AND cve_grupo = ?"
             nc_params.append(cve_grupo)
         if cve_causa_def is not None:
             nc_query += " AND cve_causa_def = ?"
             nc_params.append(cve_causa_def)
-        if cve_estado is not None: ## SI FUNCIONA
+        if cve_estado is not None:# SI FUNCIONA
             nc_query += " AND cve_estado = ?"
             nc_params.append(cve_estado)
         if cve_metropoli is not None: #POR PROBAR
@@ -399,12 +399,12 @@ async def covar_test(categoria: str, anio : str,
 
         ## ----CATEGORIES--
         for category in categories_list:
-            query_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = '{category}' AND anio = {anio};").fetchall()
+            query_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = '{category}' AND anio = {year};").fetchall()
             cvegeo_list = [str(row[0]) for row in query_distinct_cvegeo]
 
             # #------NCX----
             ncx_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ? AND cvegeo = ANY(CAST(? AS VARCHAR[]))"
-            ncx_params = [cve_enfermedad, anio, cvegeo_list]
+            ncx_params = [cve_enfermedad, year, cvegeo_list]
             if cve_grupo is not None:
                 ncx_query += " AND cve_grupo = ?"
                 ncx_params.append(cve_grupo)
@@ -435,7 +435,7 @@ async def covar_test(categoria: str, anio : str,
                 WHERE anio = ? 
                 AND cvegeo IN ({placeholder_cvegeo_list})
             """
-            nx_params = [anio] + cvegeo_list
+            nx_params = [year] + cvegeo_list
             result = con.sql(nx_query_cve, params=nx_params).fetchone()[0]
             calc_list.append({"category": category,"ncx": ncx, "nx":result, "n": n,"nc":nc})
 
