@@ -361,7 +361,6 @@ async def covar_test(categoria: str, year : str,
 
         #------N-------
         n_query = f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = {year}"
-        params = [year]
         n = 0
         if cve_estado is not None:
             cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM ESTADO_MUN WHERE cve_estado = {cve_estado};").fetchall()
@@ -370,7 +369,7 @@ async def covar_test(categoria: str, year : str,
                 if result and result[0] is not None:
                     n += result[0]
         elif cve_metropoli is not None:
-            cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
+            cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLIS WHERE cve_sun = '{cve_metropoli}';").fetchall()
             for cvegeo in cvegeo_list:
                 result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{year}';").fetchone()
                 if result and result[0] is not None:
@@ -389,14 +388,13 @@ async def covar_test(categoria: str, year : str,
         if cve_causa_def is not None:
             nc_query += " AND cve_causa_def = ?"
             nc_params.append(cve_causa_def)
-        if cve_estado is not None:# SI FUNCIONA
+        if cve_estado is not None:
             nc_query += " AND cve_estado = ?"
             nc_params.append(cve_estado)
-        if cve_metropoli is not None: #POR PROBAR
+        if cve_metropoli is not None:
             nc_query += " AND cve_metropoli = ?"
             nc_params.append(cve_metropoli)
         nc = con.sql(nc_query, params=nc_params).fetchall()[0][0]
-
         ## ----CATEGORIES--
         for category in categories_list:
             query_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = '{category}' AND anio = {year};").fetchall()
