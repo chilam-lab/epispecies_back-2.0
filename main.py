@@ -18,7 +18,7 @@ import json
 import time
 from typing import Annotated
 
-from os import listdir, remove, wait
+from os import listdir, remove
 from os.path import join, exists
 import duckdb
 
@@ -348,10 +348,8 @@ async def covar_test(categoria: str, anio : str,
                      cve_estado : str | None = None, edad : str | None = None,
                      genero : str | None = None, con: DuckDBConn = Depends(get_db)):
     try:
-        has_cve_estado = False
-        has_edad = False
-        has_genero = False
-        st = round(time.time() * 1000)
+        if cve_estado and cve_metropoli:
+            raise HTTPException(status_code=400, detail="Invalid parameters: cve_estado and cve_metropoli cannot be in the same request.")
 
         calc_list = []
         helper_cveo_list = []
@@ -438,9 +436,6 @@ async def covar_test(categoria: str, anio : str,
         if cve_causa_def is not None:
             nc_query += " AND cve_causa_def = ?"
             params.append(cve_causa_def)
-        # validar que solo venga uno de los 2 no los 2
-        if cve_estado and cve_metropoli:
-            return HTTPException(status_code=400, detail=f"Invalid parameters: cve_estado and cve_metropoli cannot be on the same request.")
         if cve_estado is not None: ## SI FUNCIONA
             nc_query += " AND cve_estado = ?"
             params.append(cve_estado)
@@ -477,8 +472,6 @@ async def covar_test(categoria: str, anio : str,
             if cve_causa_def is not None:
                 ncx_query += " AND cve_causa_def = ?"
                 params.append(cve_causa_def)
-            if cve_estado and cve_metropoli:
-                raise HTTPException(status_code=400, detail="Invalid parameters: cve_estado and cve_metropoli cannot be in the same request.")
             if cve_estado is not None:
                 ncx_query += " AND cve_estado = ?"
                 params.append(cve_estado)
@@ -503,37 +496,33 @@ async def covar_test(categoria: str, anio : str,
             ## RAWCOVAR
             ## DEFUNCIONES
             # son las defunciones que tienen la variable
-            population_filtered_query = ncx_query.replace("SELECT COUNT(cvegeo)", "SELECT DISTINCT cvegeo")
-            population_result = con.sql(population_filtered_query, params=params).fetchall()
-
-            print("QUERY")
-            print(population_filtered_query)
-            print("PARAMS")
-            print(params)
-            print("NUMERO")
-            print(len(population_result))
-            population_cvegeo = [str(row[0]) for row in population_result]
             
             # #
-            placeholders = ','.join(['?' for _ in population_cvegeo])
-            # nx_query = "SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = ? AND cvegeo = ANY(CAST(? AS VARCHAR[]))"
-            nx_query = f"""
+            placeholders_cvegeo_list = ""
+            for cve in cvegeo_list:
+                placeholders_cvegeo_list += "?,"
+            nx_query_cve = f"""
                 SELECT SUM(total_population) 
                 FROM POPULATION_TOTAL 
                 WHERE anio = ? 
-                AND cvegeo IN ({placeholders})
+                AND cvegeo IN ({placeholders_cvegeo_list})
             """
             nx_params = [anio] + cvegeo_list
-            print(nx_query)
+            print(nx_query_cve)
             print("🌈")
             
-            # Build the params list
-            # nx_params = [anio, population_cvegeo]
-            
             # Execute the query
-            result = con.sql(nx_query, params=nx_params).fetchone()[0]
+            result = con.sql(nx_query_cve, params=nx_params).fetchone()[0]
+            print(result)
             print("🎯 Total population:")
             helper.append({"category": category,"ncx": ncx, "nx":result})
+            # result2 += con.sql(f"""
+            #         SELECT SUM(total_population) 
+            #         FROM POPULATION_TOTAL 
+            #         WHERE anio = 2000 
+            #         AND cvegeo = {cve}
+            #         GROUP BY anio
+            #     """).fetchone()[0]
             # #
             # # print(nx)
             # name = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = '{categoria}' AND anio = {anio};").fetchall()
