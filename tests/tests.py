@@ -45,9 +45,9 @@ def in_memory_db():
             categoria VARCHAR
         );
         INSERT INTO RAWCOVAR VALUES
-            (1, '2015', 2, 'I1', 1, 'C1'),
+            (1001, '2000', 2, 'I1', 1, 'C1'),
             (2, '2013', 12, 'I2', 2, 'C2'),
-            (1, '2019', 8, 'I3', 9, 'C1'),
+            (1001, '2000', 2, 'I1', 9, 'C1'),
             (1, '2019', 10, 'I4', 12, 'C1'),
             (1, '2015', 6, 'I5', 120, 'C3');
     """)
@@ -56,18 +56,19 @@ def in_memory_db():
             id INTEGER,
             name VARCHAR,
             cause VARCHAR,
-            anio VARCHAR,
+            anio INTEGER,
             CVE_Grupo VARCHAR,
             Grupo VARCHAR,
-            CVE_Enfermedad VARCHAR,
+            cve_enfermedad INTEGER,
             CVE_Causa_def VARCHAR,
             Causa_def VARCHAR,
-            cvegeo INTEGER
+            cvegeo VARCHAR
         );
         INSERT INTO DEFUNCIONES VALUES
-            (1, 'John', 'Heart Disease', '2019', 'G1', 'Group1', 'E1', 'C1', 'Cause1', 1),
-            (2, 'Jane', 'Cancer', '2019', 'G2', 'Group2', 'E1', 'C2', 'Cause2', 1),
-            (3, 'Doe', 'Heart Disease', '2015', 'G3', 'Group3', 'E2', 'C3', 'Cause3', 1);
+            (1, 'John', 'Heart Disease', 2019, 'G1', 'Group1', 1, 'C1', 'Cause1', '1'),
+            (2, 'Jane', 'Cancer', 2019, 'G2', 'Group2', 1, 'C2', 'Cause2', '1'),
+            (2, 'Jane', 'Cancer', 2000, 'G2', 'Group2', 1, 'C2', 'Cause2', '1001'),
+            (3, 'Doe', 'Heart Disease', 2015, 'G3', 'Group3', 2, 'C3', 'Cause3', '1');
     """)
     conn.execute("""
         CREATE TABLE ENFERMEDADES (
@@ -82,6 +83,19 @@ def in_memory_db():
             ('1', 'Group1', '1', 'Enf1', '1', 'Cause1'),
             ('2', 'Group2', '1', 'Enf2', '2', 'Cause2'),
             ('3', 'Group3', '2', 'Enf3', '3', 'Cause3');
+    """)
+    conn.execute("""
+        CREATE TABLE ESTADO_MUN (
+            cve_estado VARCHAR,
+            estado VARCHAR,
+            cvegeo VARCHAR,
+            municipio VARCHAR
+        );
+        INSERT INTO ESTADO_MUN VALUES
+            ('9', 'CDMX', '1001', '8'),
+            ('9', 'CDMX', '1001', '8'),
+            ('9', 'CDMX', '1001', '8'),
+            ('1001', '2000', 'MUJERES', '14');
     """)
 
     conn.execute("""
@@ -123,6 +137,18 @@ def in_memory_db():
             ('1001', '2000', 'MUJERES', 12),
             ('1001', '2000', 'HOMBRES', 15),
             ('1001', '2000', 'MUJERES', 50);
+    """)
+    conn.execute("""
+        CREATE TABLE POPULATION_TOTAL (
+            cvegeo VARCHAR,
+            anio VARCHAR,
+            total_population INTEGER
+        );
+        INSERT INTO POPULATION_TOTAL VALUES
+            ('1001', '2000', 10),
+            ('1001', '2000', 20),
+            ('1001', '2000', 25),
+            ('1001', '2000', 45);
     """)
     # Attach your original database
     conn.execute("ATTACH 'duckdb_files/my_database.db' AS orig")
@@ -336,17 +362,16 @@ def test_get_third_class_missing_params(client: TestClient):
     assert response.status_code == 422, f"Expected 422, got {response.status_code}. Response: {response.text}"
     assert any(error["type"] == "missing" for error in response.json()["detail"]), "Expected 'missing' error type"
 
-# Test for /covar_test endpoint
-def test_covar_test(client):
-    response = client.get("/covar_test?categoria=C1&anio=2019")
+# Test for /calculate_variables endpoint
+def test_calculate_variables(client):
+    response = client.get("/calculate_variables?categoria=C1&year=2000&cve_enfermedad=1")
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
     assert type(data) == list
-    num_of_anio = 0
-    for counter in data:
-        num_of_anio += counter.count('2019')
-    assert num_of_anio == 2
+    assert data[0]["nx"] == 100
+    assert data[0]["n"] == 100
+    assert data[0]["category"] == "C1"
 
 # Test for /get_population endpoint
 def test_get_population(client):

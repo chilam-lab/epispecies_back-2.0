@@ -146,17 +146,17 @@ def init_db():
                 TO 'duckdb_files/RAW_CVE_METROPOLIS.parquet' (FORMAT PARQUET);
             """)
             db_connection.sql("""
-                CREATE OR REPLACE TABLE RAW_CVE_METROPOLIS AS
+                CREATE OR REPLACE TABLE RAW_CVE_METROPOLI AS
                 SELECT * FROM 'duckdb_files/RAW_CVE_METROPOLIS.parquet';
             """)
-            db_columns_to_lowercase("RAW_CVE_METROPOLIS", db_connection)
+            db_columns_to_lowercase("RAW_CVE_METROPOLI", db_connection)
 
             db_connection.sql("""
-                CREATE OR REPLACE TABLE CVE_METROPOLIS AS
-                SELECT DISTINCT CAST(CVEGEO AS VARCHAR) AS CVEGEO, CVE_SUN, Metropoli
-                FROM RAW_CVE_METROPOLIS;
+                CREATE OR REPLACE TABLE CVE_METROPOLI AS
+                SELECT DISTINCT CAST(CVEGEO AS VARCHAR) AS CVEGEO, CVE_SUN AS Cve_Metropoli, Metropoli
+                FROM RAW_CVE_METROPOLI;
             """)
-            db_columns_to_lowercase("CVE_METROPOLIS", db_connection)
+            db_columns_to_lowercase("CVE_METROPOLI", db_connection)
 
             ###########################
 
@@ -340,7 +340,7 @@ async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_d
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/calculate_variables")
-async def covar_test(categoria: str, year : str,
+async def calculate_variables(categoria: str, year : str,
                      cve_enfermedad: str,
                      cve_grupo:str | None = None,
                      cve_causa_def:str | None = None,
@@ -369,7 +369,7 @@ async def covar_test(categoria: str, year : str,
                 if result and result[0] is not None:
                     n += result[0]
         elif cve_metropoli is not None:
-            cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLIS WHERE cve_sun = '{cve_metropoli}';").fetchall()
+            cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
             for cvegeo in cvegeo_list:
                 result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{year}';").fetchone()
                 if result and result[0] is not None:
