@@ -24,7 +24,46 @@ import duckdb
 
 load_dotenv()
 
-app = FastAPI()
+tags_metadata = [
+    {
+        "name": "Show",
+        "description": "View this project tables, columns and data, to better visualize data in the project.",
+    },
+    {
+        "name": "Column",
+        "description": "Related to endpoints that get values in columns.",
+    },
+    {
+        "name": "Level",
+        "description": "Get level class of a table.",
+    },
+    {
+        "name": "Population",
+        "description": "Related to functions that reference the population, such as the number of population.",
+    },
+    {
+        "name": "Record by year",
+        "description": "Get records in a specific year.",
+    },
+    {
+        "name": "Covariables",
+        "description": "Related to functions that use covariables, such as calculations and categories.",
+    },
+    {
+        "name": "Project variables",
+        "description": "View this project variables for usage in other related projects.",
+    },
+    {
+        "name": "Upload CSV file",
+        "description": "A user can upload a CSV file for cleaning and changing its encoding to UTF-8.",
+    }
+]
+
+app = FastAPI(
+    title="Epispecies Backend API",
+    description="A collection of useful functions and endpoints to create, calculate and organize geographical data.",
+    openapi_tags=tags_metadata
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -268,8 +307,15 @@ async def shutdown_event():
 async def root(con: DuckDBConn = Depends(get_db)):
     return {"message": "Hello World"}
 
-@app.get("/show/tables")
+@app.get("/show/tables", tags=["Show"], summary="Show project tables.")
 async def show_tables(con: DuckDBConn = Depends(get_db)):
+    """
+    Display all created tables in the project.
+
+    *Response*
+
+    A dictionary of all tables.
+    """
     try:
         tables = con.sql("SHOW TABLES")
         result = tables.to_df().to_dict(orient="records")
@@ -277,8 +323,19 @@ async def show_tables(con: DuckDBConn = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/show/columns")
+@app.get("/show/columns", tags=["Show"], summary="Show columns of table.")
 async def get_columns(table_name:str, con: DuckDBConn = Depends(get_db)):
+    """
+    Display all columns of a given table.
+
+    *Params*
+
+    table_name: name of table to query.
+
+    *Response*
+
+    A JSON of all columns in the table.
+    """
     try:
         rel = con.sql(f"DESCRIBE {table_name}")
         column_names = [row[0] for row in rel.fetchall()]
@@ -286,8 +343,21 @@ async def get_columns(table_name:str, con: DuckDBConn = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/unique_pair_columns")
+@app.get("/unique_pair_columns", tags=["Column"], summary="Get unique values between two columns.")
 async def get_unique_pair_columns(column1: str, column2: str, table: str, con: DuckDBConn = Depends(get_db)):
+    """
+    Get all unique values between two columns in a table.
+
+    *Params*
+
+    column1: name of the first column in lower case. \n
+    column2: name of the second column in lower case. \n
+    table: name of table to query.
+
+    *Response*
+
+    A list of all unique values found between the two columns.
+    """
     try:
         result = con.sql(f"SELECT DISTINCT {column1}, {column2} FROM {table} ORDER BY {column2};").fetchall()
         return result
@@ -295,8 +365,19 @@ async def get_unique_pair_columns(column1: str, column2: str, table: str, con: D
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 
-@app.get("/get_second_level_class")
+@app.get("/get_second_level_class", tags=["Level"], summary="Get second id level class.")
 async def get_second_class_list(search_id_first_class:str, con: DuckDBConn = Depends(get_db)):
+    """
+    Placeholder.
+
+    *Params*
+
+    search_id_first_class: name of the id first class in lower case. \n
+
+    *Response*
+
+    Placeholder.
+    """
     try:
         if not search_id_first_class:
             raise HTTPException(status_code=400, detail="Invalid input: search_id_first_class is required")
@@ -312,8 +393,20 @@ async def get_second_class_list(search_id_first_class:str, con: DuckDBConn = Dep
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/get_third_level_class")
+@app.get("/get_third_level_class", tags=["Level"], summary="Get third id level class.")
 async def get_third_class_list(search_id_first_class: str, search_id_second_class: str , con: DuckDBConn = Depends(get_db)):
+    """
+    Placeholder.
+
+    *Params*
+
+    search_id_first_class: name of the id first class in lower case. \n
+    search_id_second_class: name of the id secod class in lower case.
+
+    *Response*
+
+    Placeholder.
+    """
     try:
         if not search_id_first_class or not search_id_second_class:
             raise HTTPException(status_code=400, detail="Invalid input: id_first_class, id_second_class, and orderedby are required")
@@ -329,8 +422,20 @@ async def get_third_class_list(search_id_first_class: str, search_id_second_clas
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/records_by_year")
+@app.get("/records_by_year", tags=["Record by year"], summary="All records in the year.")
 async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_db)):
+    """
+    Get all columns and data in a table, using year as a filter.
+
+    *Params*
+
+    year: numeric value of the year to search. \n
+    table: name of table to query.
+
+    *Response*
+
+    A list of all values found in the table that match year.
+    """
     try:
         if not year or not table:
             raise HTTPException(status_code=400, detail="Invalid input: year and table are required")
@@ -339,7 +444,7 @@ async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_d
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/calculate_variables")
+@app.get("/calculate_variables", tags=["Covariables"], summary="Calculate population variable data.")
 async def calculate_variables(categoria: str, year : str,
                      cve_enfermedad: str,
                      cve_grupo:str | None = None,
@@ -347,6 +452,25 @@ async def calculate_variables(categoria: str, year : str,
                      cve_metropoli : str | None = None,
                      cve_estado : str | None = None, edad : str | None = None,
                      genero : str | None = None, con: DuckDBConn = Depends(get_db)):
+    """
+    Calculate population data using various filters for better geographical precision.
+
+    *Params*
+
+    categoria: name of the category. \n
+    year: numerical value of year. \n
+    cve_enfermedad: numerical identifier of the disease. \n
+    cve_grupo: numerical identifier of the disease group. \n
+    cve_causa_def: numerical identifier of death cause. \n
+    cve_metropoli: numerical identifier of metropoli zone (this cannot have value if cve_estado is given). \n
+    cve_estado: numerical identifier of state (this cannot have value if cve_metropoli is given). \n
+    genero: numerical identifier of gender. \n
+    edad: numerical value of age. \n
+
+    *Response*
+
+    A list of all variables that are in the category.
+    """
     try:
         if cve_estado and cve_metropoli:
             raise HTTPException(status_code=400, detail="Invalid parameters: cve_estado and cve_metropoli cannot be in the same request.")
@@ -441,8 +565,19 @@ async def calculate_variables(categoria: str, year : str,
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/categories")
+@app.get("/categories", tags=["Covariables"], summary=["Get all categories."])
 async def get_categories(year: str, con: DuckDBConn = Depends(get_db)):
+    """
+    Get all categories in the project.
+
+    *Params*
+
+    year: numeric value of the year to search. \n
+
+    *Response*
+
+    A list of all categories that match year.
+    """
     try:
         if not year:
             raise HTTPException(status_code=400, detail="Invalid input: year is required")
@@ -451,8 +586,20 @@ async def get_categories(year: str, con: DuckDBConn = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/records_by_year_by_column")
+@app.get("/records_by_year_by_column", tags=["Record by year"], summary="Get id first class records in year.")
 async def get_records_year_by_coulmn(year: str, search_id_first_class:str, con: DuckDBConn = Depends(get_db)):
+    """
+    Get record of a column using year as a filter.
+
+    *Params*
+
+    year: numeric value of the year to search. \n
+    search_id_first_class: name of id first class to search.
+
+    *Response*
+
+    A list of all values found in the column that match year.
+    """
     try:
         if not year or not search_id_first_class:
             raise HTTPException(status_code=400, detail="Invalid input: year and table are required")
@@ -461,8 +608,20 @@ async def get_records_year_by_coulmn(year: str, search_id_first_class:str, con: 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/unique_values_by_column")
+@app.get("/unique_values_by_column", tags=["Column"], summary="Get unique values of a column.")
 async def get_unique_values_by_column(column_name: str, table:str, con: DuckDBConn = Depends(get_db)):
+    """
+    Get all unique values of a single column in a given table.
+
+    *Params*
+
+    column_name: name of the column in lower case. \n
+    table: name of table to query.
+
+    *Response*
+
+    A list of all unique values found in the column.
+    """
     try:
         if not column_name or not table:
             raise HTTPException(status_code=400, detail="Invalid input: column_name and table are required")
@@ -471,18 +630,43 @@ async def get_unique_values_by_column(column_name: str, table:str, con: DuckDBCo
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-@app.get("/get_all_by_table")
+@app.get("/get_all_by_table", tags=["Show"], summary="Show all data of table.")
 async def get_all_the_values(table:str, con: DuckDBConn = Depends(get_db)):
+    """
+    Get all columns and data of a given table (takes time to complete).
+
+    *Params*
+
+    table: name of table to query.
+
+    *Response*
+
+    A list of all the data in a table.
+    """
     try:
         if not table:
-            raise HTTPException(status_code=400, detail="Invalid input: column_name and table are required")
+            raise HTTPException(status_code=400, detail="Invalid input: table required")
         result = con.sql(f"SELECT * FROM {table}").fetchall()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-@app.get("/get_population")
+@app.get("/get_population", tags=["Population"], summary="Get all population")
 async def get_population(year: str, cvegeo:str, edad_gpo:str = "", sexo:str = "", con: DuckDBConn = Depends(get_db)):
+    """
+    Get all population that match the filters.
+
+    *Params*
+
+    year: numerical value of year. \n
+    cvegeo: numerical value of cvegeo. \n
+    edad_gpo: range of age values (ex. 0-04). \n
+    sexo: Gender value can be HOMBRES or MUJERES. \n
+
+    *Response*
+
+    A list of all population that match the query.
+    """
     try:
         if not year and not cvegeo:
             raise HTTPException(status_code=400, detail="Invalid input: year and cvegeo are required")
@@ -510,8 +694,19 @@ def delete_tmp_file(path: str) -> None:
     os.unlink(path)
     
 
-@app.get("/variables/id")
+@app.get("/variables/id", tags=["Project variables"], summary="Get all variables of id")
 async def get_variables_id(id: str, con: DuckDBConn = Depends(get_db)):
+    """
+    Get all variables of a given id.
+
+    *Params*
+
+    id: name of the id. \n
+
+    *Response*
+
+    A JSON of all variables that match id value.
+    """
     try:
         var_table = ""
         cve = ""
@@ -572,8 +767,15 @@ async def get_variables_id(id: str, con: DuckDBConn = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
-@app.get("/variables")
+@app.get("/variables", tags=["Project variables"], summary="Get variables data in project")
 async def get_variables(con: DuckDBConn = Depends(get_db)):
+    """
+    Get all variables data in the project.
+
+    *Response*
+
+    A JSON of all variables data.
+    """
     try:
         result = con.sql(f"""
             SELECT DISTINCT CONCAT(
@@ -618,8 +820,19 @@ async def get_variables(con: DuckDBConn = Depends(get_db)):
  
 
 # EndPoint for cleaning a csv file and enable a download- 
-@app.post("/upload_csv")
+@app.post("/upload_csv", tags=["Upload CSV file"], summary="Clean a user uploaded csv")
 async def upload_csv(file: UploadFile = File(...)):
+    """
+    Receive a CSV file, then cleans encoding errors and enables a download link of the same file in a UTF-8 encoding.
+
+    *Params*
+
+    file: CSV file to clean and convert. \n
+
+    *Response*
+
+    A download link of the uploaded file in UTF-8 encoding.
+    """
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only csv files allowed")
     try:
