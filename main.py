@@ -445,27 +445,27 @@ async def get_records_year(year: str, table:str, con: DuckDBConn = Depends(get_d
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/calculate_variables", tags=["Covariables"], summary="Calculate population variable data.")
-async def calculate_variables(categoria: str, year : str,
+async def calculate_variables(category: str, year : str,
                      cve_enfermedad: str,
                      cve_grupo:str | None = None,
                      cve_causa_def:str | None = None,
                      cve_metropoli : str | None = None,
-                     cve_estado : str | None = None, edad : str | None = None,
-                     genero : str | None = None, con: DuckDBConn = Depends(get_db)):
+                     cve_estado : str | None = None, age : str | None = None,
+                     gender : str | None = None, con: DuckDBConn = Depends(get_db)):
     """
     Calculate population data using various filters for better geographical precision.
 
     *Params*
 
-    categoria: name of the category. \n
+    category: name of the selected category. \n
     year: numerical value of year. \n
     cve_enfermedad: numerical identifier of the disease. \n
     cve_grupo: numerical identifier of the disease group. \n
     cve_causa_def: numerical identifier of death cause. \n
     cve_metropoli: numerical identifier of metropoli zone (this cannot have value if cve_estado is given). \n
     cve_estado: numerical identifier of state (this cannot have value if cve_metropoli is given). \n
-    genero: numerical identifier of gender. \n
-    edad: numerical value of age. \n
+    gender: numerical identifier of gender. \n
+    age: numerical value of age. \n
 
     *Response*
 
@@ -477,7 +477,7 @@ async def calculate_variables(categoria: str, year : str,
 
         calc_list = []
 
-        index_distinct_cvegeo = con.sql(f"SELECT DISTINCT indice FROM RAWCOVAR WHERE categoria = '{categoria}' AND anio = {year};").fetchall()
+        index_distinct_cvegeo = con.sql(f"SELECT DISTINCT indice FROM RAWCOVAR WHERE categoria = '{category}' AND anio = {year};").fetchall()
         index_list = [row[0] for row in index_distinct_cvegeo]
 
         categories_distinct_cvegeo = con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE indice = '{index_list[0]}' AND anio = {year}; ").fetchall()
@@ -520,8 +520,8 @@ async def calculate_variables(categoria: str, year : str,
             nc_params.append(cve_metropoli)
         nc = con.sql(nc_query, params=nc_params).fetchall()[0][0]
         ## ----CATEGORIES--
-        for category in categories_list:
-            query_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = '{category}' AND anio = {year};").fetchall()
+        for current_category in categories_list:
+            query_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = '{current_category}' AND anio = {year};").fetchall()
             cvegeo_list = [str(row[0]) for row in query_distinct_cvegeo]
 
             # #------NCX----
@@ -539,12 +539,12 @@ async def calculate_variables(categoria: str, year : str,
             if cve_metropoli is not None:
                 ncx_query += " AND cve_metropoli = ?"
                 ncx_params.append(cve_metropoli)
-            if edad is not None:
+            if age is not None:
                 ncx_query += " AND edad_gpo = ?"
-                ncx_params.append(edad)
-            if genero is not None:
+                ncx_params.append(age)
+            if gender is not None:
                 ncx_query += " AND sexo = ?"
-                ncx_params.append(genero)
+                ncx_params.append(gender)
             ncx = con.sql(ncx_query, params=ncx_params).fetchone()[0]
 
             #-----NX-----
@@ -559,7 +559,7 @@ async def calculate_variables(categoria: str, year : str,
             """
             nx_params = [year] + cvegeo_list
             result = con.sql(nx_query_cve, params=nx_params).fetchone()[0]
-            calc_list.append({"category": category,"ncx": ncx, "nx":result, "n": n,"nc":nc})
+            calc_list.append({"category": current_category,"ncx": ncx, "nx":result, "n": n,"nc":nc})
 
         return calc_list
     except Exception as e:
