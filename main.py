@@ -516,8 +516,19 @@ async def calculate_variables(category: str, year : str,
             nc_query += " AND cve_estado = ?"
             nc_params.append(cve_estado)
         if cve_metropoli is not None:
-            nc_query += " AND cve_metropoli = ?"
-            nc_params.append(cve_metropoli)
+            if cve_metropoli == "all":
+                nc_query += " AND cve_metropoli IS NOT NULL"
+            else:
+                nc_query += " AND cve_metropoli = ?"
+                nc_params.append(cve_metropoli)
+        if age is not None:
+            nc_query += " AND edad_gpo = ?"
+            nc_params.append(age)
+        if gender is not None:
+            nc_query += " AND sexo = ?"
+            nc_params.append(gender)
+
+        # Agregar demas filtros
         nc = con.sql(nc_query, params=nc_params).fetchall()[0][0]
         ## ----CATEGORIES--
         for current_category in categories_list:
