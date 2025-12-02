@@ -493,7 +493,10 @@ async def calculate_variables(category: str, year : str,
                 if result and result[0] is not None:
                     n += result[0]
         elif cve_metropoli is not None:
-            cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
+            if cve_metropoli == "all":
+                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli IS NOT NULL;").fetchall()
+            else:
+                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
             for cvegeo in cvegeo_list:
                 result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{year}';").fetchone()
                 if result and result[0] is not None:
@@ -548,8 +551,11 @@ async def calculate_variables(category: str, year : str,
                 ncx_query += " AND cve_estado = ?"
                 ncx_params.append(cve_estado)
             if cve_metropoli is not None:
-                ncx_query += " AND cve_metropoli = ?"
-                ncx_params.append(cve_metropoli)
+                if cve_metropoli == "all":
+                    nc_query += " AND cve_metropoli IS NOT NULL"
+                else:
+                    nc_query += " AND cve_metropoli = ?"
+                    nc_params.append(cve_metropoli)
             if age is not None:
                 ncx_query += " AND edad_gpo = ?"
                 ncx_params.append(age)
