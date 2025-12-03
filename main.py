@@ -517,7 +517,6 @@ async def calculate_variables(category: str, year : str,
             if result and result[0] is not None:
                 n = result[0]
 
-        print(cve_estado)
        # ----------NC-----------
         nc_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ?"
         nc_params = [cve_enfermedad, year]
@@ -543,8 +542,6 @@ async def calculate_variables(category: str, year : str,
             nc_query += " AND sexo = ?"
             nc_params.append(gender)
 
-        print(nc_query)
-        print(nc_params)
         nc = con.sql(nc_query, params=nc_params).fetchall()[0][0]
         ## ----CATEGORIES--
 
@@ -624,7 +621,6 @@ async def get_categories(year: str, cve_state: str | None = None, cve_metropoli:
         else:
             result = con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE anio = {year};").fetchall()
         lista = list(set(result))
-        print(len(lista))
         return lista
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
@@ -786,7 +782,6 @@ async def get_variables_id(id: str, con: DuckDBConn = Depends(get_db)):
         
         search_count['decile'] = qcut(search_count['count'].rank(method='first'), 10, labels=range(1,11))
         decile_summary = search_count.groupby('decile').agg(municipalities=('count', 'size'), min_count=('count', 'min'), max_count=('count', 'max') ).reset_index() 
-        print(decile_summary)
         
         result = []
         num_val = 1
