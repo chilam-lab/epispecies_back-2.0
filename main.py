@@ -477,14 +477,14 @@ async def calculate_variables(category: str, year : str,
         if cve_estado is not None:
             cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM ESTADO_MUN WHERE cve_estado = {cve_estado};").fetchall()
             for cvegeo in cvegeo_list:
-                categories_distinct_cvegeo += con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE indice = '{index_list[0]}' AND anio = {year} AND cvegeo = '{cvegeo[0]}'").fetchall()
+                categories_distinct_cvegeo += con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE indice = '{index_list[0]}' AND anio = {year} AND cvegeo = '{cvegeo[0]}'").fetchall()
         elif cve_metropoli is not None:
             if cve_metropoli == "all":
                 cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli IS NOT NULL;").fetchall()
             else:
                 cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
             for cvegeo in cvegeo_list:
-                categories_distinct_cvegeo += con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE indice = '{index_list[0]}' AND anio = {year} AND cvegeo = '{cvegeo[0]}'").fetchall()
+                categories_distinct_cvegeo += con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE indice = '{index_list[0]}' AND anio = {year} AND cvegeo = '{cvegeo[0]}'").fetchall()
         else:
             categories_distinct_cvegeo = con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE indice = '{index_list[0]}' AND anio = {year}; ").fetchall()
         categories_list = list(set([row[0] for row in categories_distinct_cvegeo]))
@@ -609,16 +609,16 @@ async def get_categories(year: str, cve_state: str | None = None, cve_metropoli:
         if cve_state is not None:
             cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM ESTADO_MUN WHERE cve_estado = {cve_state};").fetchall()
             for cvegeo in cvegeo_list:
-                result += con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE anio = {year} AND cvegeo='{cvegeo[0]}';").fetchall()
+                result += con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE anio = {year} AND cvegeo='{cvegeo[0]}';").fetchall()
         elif cve_metropoli is not None:
             if cve_metropoli == "all":
                 cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli IS NOT NULL;").fetchall()
             else:
                 cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
             for cvegeo in cvegeo_list:
-                result += con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE anio = {year} AND cvegeo='{cvegeo[0]}';").fetchall()
+                result += con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE anio = {year} AND cvegeo='{cvegeo[0]}';").fetchall()
         else:
-            result = con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE anio = {year};").fetchall()
+            result = con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE anio = {year};").fetchall()
         return list(set(result))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
