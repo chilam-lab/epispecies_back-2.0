@@ -469,49 +469,60 @@ async def calculate_variables(category: str, year : str,
             raise HTTPException(status_code=400, detail="Invalid parameters: cve_estado and cve_metropoli cannot be in the same request.")
 
         calc_list = []
+        cvegeo_list_by_region = []
+        categories_distinct_cvegeo = []
 
+        # -------index---
         index_distinct_cvegeo = con.sql(f"SELECT DISTINCT indice FROM CATEGORIES WHERE categoria = '{category}' AND anio = {year};").fetchall()
         index_list = [row[0] for row in index_distinct_cvegeo]
 
-        categories_distinct_cvegeo = []
+        # ------CVEGEOS if cve_estado is send--------
         if cve_estado is not None:
             cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM ESTADO_MUN WHERE cve_estado = {cve_estado};").fetchall()
+            print("🥐")
+            print(cvegeo_list)
+            print("🥐")
+            cvegeo_list_by_region = cvegeo_list
             for cvegeo in cvegeo_list:
+                # ------categories only available from the state--------
                 categories_distinct_cvegeo += con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE indice = '{index_list[0]}' AND anio = {year} AND cvegeo = '{cvegeo[0]}'").fetchall()
+        # ------CVEGEOS if metropoli is send--------
         elif cve_metropoli is not None:
             if cve_metropoli == "all":
                 cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli IS NOT NULL;").fetchall()
             else:
                 cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
+            cvegeo_list_by_region = cvegeo_list
             for cvegeo in cvegeo_list:
+                # ------categories only available from the municipality--------
                 categories_distinct_cvegeo += con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE indice = '{index_list[0]}' AND anio = {year} AND cvegeo = '{cvegeo[0]}'").fetchall()
         else:
-            categories_distinct_cvegeo = con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE indice = '{index_list[0]}' AND anio = {year}; ").fetchall()
+        # ---------all the categories---------- 
+            categories_distinct_cvegeo = con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE indice = '{index_list[0]}' AND anio = {year}; ").fetchall()
         categories_list = list(set([row[0] for row in categories_distinct_cvegeo]))
+        print("🥐")
+        print(categories_list)
+        print("🥐")
+        cvegeo_list_by_region = [str(row[0]) for row in cvegeo_list_by_region]
 
-        #------N-------
+        #------N-------🌈
         n_query = f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = {year}"
         n = 0
         if cve_estado is not None:
-            cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM ESTADO_MUN WHERE cve_estado = {cve_estado};").fetchall()
-            for cvegeo in cvegeo_list:
-                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{year}';").fetchone()
+            for cvegeo in cvegeo_list_by_region:
+                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo}' AND anio = '{year}';").fetchone()
                 if result and result[0] is not None:
                     n += result[0]
         elif cve_metropoli is not None:
-            if cve_metropoli == "all":
-                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli IS NOT NULL;").fetchall()
-            else:
-                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
-            for cvegeo in cvegeo_list:
-                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo[0]}' AND anio = '{year}';").fetchone()
+            for cvegeo in cvegeo_list_by_region:
+                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo}' AND anio = '{year}';").fetchone()
                 if result and result[0] is not None:
                     n += result[0]
         else:
             result = con.sql(n_query).fetchone()
             if result and result[0] is not None:
                 n = result[0]
-    
+
        # ----------NC-----------
         nc_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ?"
         nc_params = [cve_enfermedad, year]
@@ -522,7 +533,7 @@ async def calculate_variables(category: str, year : str,
             nc_query += " AND cve_causa_def = ?"
             nc_params.append(cve_causa_def)
         if cve_estado is not None:
-            nc_query += " AND cve_estado = ?"
+            nc_query += " AND cvegeo = ?"
             nc_params.append(cve_estado)
         if cve_metropoli is not None:
             if cve_metropoli == "all":
@@ -540,12 +551,24 @@ async def calculate_variables(category: str, year : str,
         # Agregar demas filtros
         nc = con.sql(nc_query, params=nc_params).fetchall()[0][0]
         ## ----CATEGORIES--
-        if cvegeo_list:
-            cvegeo_list = list(set([str(row[0]) for row in cvegeo_list]))
+
+        print("this is the current category list🛼")
+        print(categories_list)
+        print("the list region of the cvegos🎏")
+        print(cvegeo_list_by_region)
         for current_category in categories_list:
             query_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM CATEGORIES WHERE categoria = '{current_category}' AND anio = {year};").fetchall()
             query_distinct_cvegeo = [str(row[0]) for row in query_distinct_cvegeo]
-            cvegeo_list_category = list(set(cvegeo_list) & set(query_distinct_cvegeo))
+            cvegeo_list_category = list(set(query_distinct_cvegeo))
+            print("🍁")
+            print(cvegeo_list_category)
+
+            if cve_estado is not None or cve_metropoli is not None:
+                cvegeo_set_by_region = set(cvegeo_list_by_region)  # Convert to set for faster lookup
+                cvegeo_list_category = [cvegeo for cvegeo in cvegeo_list_category if cvegeo in cvegeo_set_by_region]
+    
+            print("🍁AFTER")
+            print(cvegeo_list_category)
 
             # #------NCX----
             ncx_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ? AND cvegeo = ANY(CAST(? AS VARCHAR[]))"
@@ -556,15 +579,6 @@ async def calculate_variables(category: str, year : str,
             if cve_causa_def is not None:
                 ncx_query += " AND cve_causa_def = ?"
                 ncx_params.append(cve_causa_def)
-            if cve_estado is not None:
-                ncx_query += " AND cve_estado = ?"
-                ncx_params.append(cve_estado)
-            if cve_metropoli is not None:
-                if cve_metropoli == "all":
-                    nc_query += " AND cve_metropoli IS NOT NULL"
-                else:
-                    nc_query += " AND cve_metropoli = ?"
-                    nc_params.append(cve_metropoli)
             if age is not None:
                 ncx_query += " AND edad_gpo = ?"
                 ncx_params.append(age)
@@ -622,7 +636,9 @@ async def get_categories(year: str, cve_state: str | None = None, cve_metropoli:
                 result += con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE anio = {year} AND cvegeo='{cvegeo[0]}';").fetchall()
         else:
             result = con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE anio = {year};").fetchall()
-        return list(set(result))
+        lista = list(set(result))
+        print(len(lista))
+        return lista
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
