@@ -121,10 +121,10 @@ def init_db():
                 TO 'duckdb_files/RAWCOVAR.parquet' (FORMAT PARQUET);
             """)
             db_connection.sql("""
-                CREATE OR REPLACE TABLE RAWCOVAR AS
+                CREATE OR REPLACE TABLE CATEGORIES AS
                 SELECT * FROM 'duckdb_files/RAWCOVAR.parquet';
             """)
-            db_columns_to_lowercase("RAWCOVAR", db_connection)
+            db_columns_to_lowercase("CATEGORIES", db_connection)
 
 
             
@@ -279,13 +279,6 @@ def init_db():
                 FROM RAWDATA;
             """)
             db_columns_to_lowercase("ESTADO_MUN", db_connection)
-
-            db_connection.sql("""
-                CREATE OR REPLACE TABLE METROPOLI AS
-                SELECT DISTINCT CVE_Metropoli, Metropolis, CAST(CVEGEO AS VARCHAR) AS CVEGEO
-                FROM RAWDATA;
-            """)
-            db_columns_to_lowercase("METROPOLI", db_connection)
     except Exception as e:
         print(f"Error creating table: {e}")
         tables = db_connection.sql("SHOW TABLES").fetchall()
@@ -477,7 +470,7 @@ async def calculate_variables(category: str, year : str,
 
         calc_list = []
 
-        index_distinct_cvegeo = con.sql(f"SELECT DISTINCT indice FROM RAWCOVAR WHERE categoria = '{category}' AND anio = {year};").fetchall()
+        index_distinct_cvegeo = con.sql(f"SELECT DISTINCT indice FROM CATEGORIES WHERE categoria = '{category}' AND anio = {year};").fetchall()
         index_list = [row[0] for row in index_distinct_cvegeo]
 
         categories_distinct_cvegeo = []
@@ -548,7 +541,7 @@ async def calculate_variables(category: str, year : str,
         nc = con.sql(nc_query, params=nc_params).fetchall()[0][0]
         ## ----CATEGORIES--
         for current_category in categories_list:
-            query_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM RAWCOVAR WHERE categoria = '{current_category}' AND anio = {year};").fetchall()
+            query_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM CATEGORIES WHERE categoria = '{current_category}' AND anio = {year};").fetchall()
             cvegeo_list = [str(row[0]) for row in query_distinct_cvegeo]
 
             # #------NCX----
@@ -611,22 +604,8 @@ async def get_categories(year: str, cve_state: str | None = None, cve_metropoli:
     try:
         if not year:
             raise HTTPException(status_code=400, detail="Invalid input: year is required")
-        result = []
-        cvegeo_list = []
-        if cve_state is not None:
-            cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM ESTADO_MUN WHERE cve_estado = {cve_state};").fetchall()
-            for cvegeo in cvegeo_list:
-                result += con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE anio = {year} AND cvegeo='{cvegeo[0]}';").fetchall()
-        elif cve_metropoli is not None:
-            if cve_metropoli == "all":
-                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli IS NOT NULL;").fetchall()
-            else:
-                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
-            for cvegeo in cvegeo_list:
-                result += con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE anio = {year} AND cvegeo='{cvegeo[0]}';").fetchall()
-        else:
-            result = con.sql(f"SELECT DISTINCT categoria FROM RAWCOVAR WHERE anio = {year};").fetchall()
-        return list(set(result))
+        result = con.sql(f"SELECT DISTINCT categoria FROM CATEGORIES WHERE anio = {year};").fetchall()
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
