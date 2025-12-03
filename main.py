@@ -517,6 +517,7 @@ async def calculate_variables(category: str, year : str,
             if result and result[0] is not None:
                 n = result[0]
 
+        print(cve_estado)
        # ----------NC-----------
         nc_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ?"
         nc_params = [cve_enfermedad, year]
@@ -527,7 +528,7 @@ async def calculate_variables(category: str, year : str,
             nc_query += " AND cve_causa_def = ?"
             nc_params.append(cve_causa_def)
         if cve_estado is not None:
-            nc_query += " AND cvegeo = ?"
+            nc_query += " AND cve_estado = ?"
             nc_params.append(cve_estado)
         if cve_metropoli is not None:
             if cve_metropoli == "all":
@@ -542,6 +543,8 @@ async def calculate_variables(category: str, year : str,
             nc_query += " AND sexo = ?"
             nc_params.append(gender)
 
+        print(nc_query)
+        print(nc_params)
         nc = con.sql(nc_query, params=nc_params).fetchall()[0][0]
         ## ----CATEGORIES--
 
