@@ -511,7 +511,7 @@ async def calculate_variables(category: str, year : str,
             result = con.sql(n_query).fetchone()
             if result and result[0] is not None:
                 n = result[0]
-
+    
        # ----------NC-----------
         nc_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ?"
         nc_params = [cve_enfermedad, year]
@@ -540,13 +540,16 @@ async def calculate_variables(category: str, year : str,
         # Agregar demas filtros
         nc = con.sql(nc_query, params=nc_params).fetchall()[0][0]
         ## ----CATEGORIES--
+        if cvegeo_list:
+            cvegeo_list = list(set([str(row[0]) for row in cvegeo_list]))
         for current_category in categories_list:
             query_distinct_cvegeo = con.sql(f"SELECT DISTINCT cvegeo FROM CATEGORIES WHERE categoria = '{current_category}' AND anio = {year};").fetchall()
-            cvegeo_list = [str(row[0]) for row in query_distinct_cvegeo]
+            query_distinct_cvegeo = [str(row[0]) for row in query_distinct_cvegeo]
+            cvegeo_list_category = list(set(cvegeo_list) & set(query_distinct_cvegeo))
 
             # #------NCX----
             ncx_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ? AND cvegeo = ANY(CAST(? AS VARCHAR[]))"
-            ncx_params = [cve_enfermedad, year, cvegeo_list]
+            ncx_params = [cve_enfermedad, year, cvegeo_list_category]
             if cve_grupo is not None:
                 ncx_query += " AND cve_grupo = ?"
                 ncx_params.append(cve_grupo)
@@ -572,7 +575,7 @@ async def calculate_variables(category: str, year : str,
 
             #-----NX-----
             placeholder_cvegeo_list = ""
-            for cvegeo in cvegeo_list:
+            for cvegeo in cvegeo_list_category:
                 placeholder_cvegeo_list += "?,"
             nx_query_cve = f"""
                 SELECT SUM(total_population) 
@@ -580,7 +583,7 @@ async def calculate_variables(category: str, year : str,
                 WHERE anio = ? 
                 AND cvegeo IN ({placeholder_cvegeo_list})
             """
-            nx_params = [year] + cvegeo_list
+            nx_params = [year] + cvegeo_list_category
             result = con.sql(nx_query_cve, params=nx_params).fetchone()[0]
             calc_list.append({"category": current_category,"ncx": ncx, "nx":result, "n": n,"nc":nc})
 
