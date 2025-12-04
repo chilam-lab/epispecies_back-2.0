@@ -36,7 +36,7 @@ def in_memory_db():
             (3, 'Doe', 'Heart Disease', '2020', 'G3', 'Group3', 'E2', 'C3', 'Cause3');
     """)
     conn.execute("""
-        CREATE TABLE RAWCOVAR (
+        CREATE TABLE CATEGORIES (
             cvegeo INTEGER,
             anio VARCHAR,
             mes INTEGER,
@@ -44,7 +44,7 @@ def in_memory_db():
             valor INTEGER,
             categoria VARCHAR
         );
-        INSERT INTO RAWCOVAR VALUES
+        INSERT INTO CATEGORIES VALUES
             (1001, '2000', 2, 'I1', 1, 'C1'),
             (2, '2013', 12, 'I2', 2, 'C2'),
             (1001, '2000', 2, 'I1', 9, 'C1'),
@@ -364,7 +364,7 @@ def test_get_third_class_missing_params(client: TestClient):
 
 # Test for /calculate_variables endpoint
 def test_calculate_variables(client):
-    response = client.get("/calculate_variables?categoria=C1&year=2000&cve_enfermedad=1")
+    response = client.get("/calculate_variables?category=C1&year=2000&cve_enfermedad=1")
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
