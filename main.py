@@ -729,6 +729,62 @@ async def get_population(year: str, cvegeo:str, edad_gpo:str = "", sexo:str = ""
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
+@app.get("/get_all_population", tags=["Population"], summary="Get all population from all the cvegeo")
+async def get_population(year: str, cve_state:str = "", cvegeo:str = "", cve_metropoli:str ="", age_group:str = "", gender:str = "", con: DuckDBConn = Depends(get_db)):
+    """
+    Get all population that match the filters.
+
+    *Params*
+
+    year: numerical value of year. \n
+    cvegeo: numerical value of cvegeo. \n
+    edad_gpo: range of age values (ex. 0-04). \n
+    sexo: Gender value can be HOMBRES or MUJERES. \n
+
+    *Response*
+
+    A list of all population that match the query.
+    """
+    cvegeo_list_by_region = []
+    try:
+        if not year:
+            raise HTTPException(status_code=400, detail="Invalid input: year and cvegeo are required")
+        query = "SELECT SUM(poblacion) FROM POPULATION WHERE anio = ? "
+        params = [year]
+        if age_group != "":
+            query += "AND edad_gpo = ?"
+            params.append(age_group)
+        if gender != "":
+            query += "AND sexo = ?"
+            params.append(gender)
+        if cvegeo != "":
+            query += "AND cvegeo = ? "
+            params.append(cvegeo)
+        if cve_state != "":
+            cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM ESTADO_MUN WHERE cve_estado = '{cve_state}';").fetchall()
+            cvegeo_list_by_region = [row[0] for row in cvegeo_list]  # Extract cvegeo values
+            if cvegeo_list_by_region:
+                placeholders = ",".join(["?" for _ in cvegeo_list_by_region])
+                query += f"AND cvegeo IN ({placeholders}) "
+                params.extend(cvegeo_list_by_region)
+
+        if cve_metropoli != "":
+            if cve_metropoli == "all":
+                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM METROPOLI WHERE cve_metropoli IS NOT NULL;").fetchall()
+            else:
+                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
+            cvegeo_list_by_region = [row[0] for row in cvegeo_list]  # Extract cvegeo values
+            if cvegeo_list_by_region:
+                placeholders = ",".join(["?" for _ in cvegeo_list_by_region])
+                query += f"AND cvegeo IN ({placeholders}) "
+                params.extend(cvegeo_list_by_region)
+
+
+        result = con.sql(query, params=params).fetchall()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
+
 def delete_tmp_file(path: str) -> None:
     os.unlink(path)
     
