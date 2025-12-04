@@ -517,13 +517,6 @@ async def calculate_variables(category: str, year : str,
             else:
                 gen = "MUJERES"
 
-        print(f"year: {year}")
-        print(f"cve_state: {cve_state}")
-        print(f"cve_metro: {cve_metro}")
-        print(f"age_group: {age_group}")
-        print(f"gen: {gen}")
-        print(f"gender: {gender}")
-
         calc_n = await get_all_population(
             year=year,
             cve_state=cve_state,
@@ -810,7 +803,7 @@ async def get_all_population(year: str, cve_state:str = "", cvegeo:str = "", cve
 
 
         result = con.sql(query, params=params).fetchall()
-        return result
+        return result[0][0]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
