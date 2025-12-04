@@ -500,22 +500,41 @@ async def calculate_variables(category: str, year : str,
         cvegeo_list_by_region = [str(row[0]) for row in cvegeo_list_by_region]
 
         #------N-------
-        n_query = f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE anio = {year}"
         n = 0
+        cve_state = ""
+        cve_metro = ""
+        age_group = ""
+        gen = ""
         if cve_estado is not None:
-            for cvegeo in cvegeo_list_by_region:
-                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo}' AND anio = '{year}';").fetchone()
-                if result and result[0] is not None:
-                    n += result[0]
+            cve_state = cve_estado
         elif cve_metropoli is not None:
-            for cvegeo in cvegeo_list_by_region:
-                result = con.sql(f"SELECT SUM(total_population) FROM POPULATION_TOTAL WHERE cvegeo = '{cvegeo}' AND anio = '{year}';").fetchone()
-                if result and result[0] is not None:
-                    n += result[0]
-        else:
-            result = con.sql(n_query).fetchone()
-            if result and result[0] is not None:
-                n = result[0]
+            cve_metro = cve_metropoli
+        if  age is not None:
+            age_group = age
+        if gender is not None:
+            if gender == "1":
+                gen = "HOMBRES"
+            else:
+                gen = "MUJERES"
+
+        print(f"year: {year}")
+        print(f"cve_state: {cve_state}")
+        print(f"cve_metro: {cve_metro}")
+        print(f"age_group: {age_group}")
+        print(f"gen: {gen}")
+        print(f"gender: {gender}")
+
+        calc_n = await get_all_population(
+            year=year,
+            cve_state=cve_state,
+            cvegeo="",
+            cve_metropoli=cve_metro,
+            age_group=age_group,
+            gender=gen,
+            con=con
+        )
+        n = calc_n[0][0]
+        print(n)
 
        # ----------NC-----------
         nc_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ?"
@@ -572,16 +591,26 @@ async def calculate_variables(category: str, year : str,
             ncx = con.sql(ncx_query, params=ncx_params).fetchone()[0]
 
             #-----NX-----
-            placeholder_cvegeo_list = ""
-            for cvegeo in cvegeo_list_category:
-                placeholder_cvegeo_list += "?,"
             nx_query_cve = f"""
-                SELECT SUM(total_population) 
-                FROM POPULATION_TOTAL 
-                WHERE anio = ? 
-                AND cvegeo IN ({placeholder_cvegeo_list})
+                SELECT SUM(poblacion) 
+                FROM POPULATION 
+                WHERE anio = ?
             """
-            nx_params = [year] + cvegeo_list_category
+            nx_params = [year]
+            
+            if age is not None:
+                nx_query_cve += " AND edad_gpo = ?"
+                nx_params.append(age)
+            if gender is not None:
+                nx_query_cve += " AND sexo = ?"
+                if gender == "1":
+                    nx_params.append("HOMBRES")
+                else:
+                    nx_params.append("MUJERES")
+            if cvegeo_list_category:
+                placeholder_cvegeo_list = ",".join(["?" for _ in cvegeo_list_category])
+                nx_query_cve += f" AND cvegeo IN ({placeholder_cvegeo_list})"
+                nx_params.extend(cvegeo_list_category)
             result = con.sql(nx_query_cve, params=nx_params).fetchone()[0]
             calc_list.append({"category": current_category,"ncx": ncx, "nx":result, "n": n,"nc":nc})
 
@@ -730,7 +759,7 @@ async def get_population(year: str, cvegeo:str, edad_gpo:str = "", sexo:str = ""
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/get_all_population", tags=["Population"], summary="Get all population from all the cvegeo")
-async def get_population(year: str, cve_state:str = "", cvegeo:str = "", cve_metropoli:str ="", age_group:str = "", gender:str = "", con: DuckDBConn = Depends(get_db)):
+async def get_all_population(year: str, cve_state:str = "", cvegeo:str = "", cve_metropoli:str ="", age_group:str = "", gender:str = "", con: DuckDBConn = Depends(get_db)):
     """
     Get all population that match the filters.
 
