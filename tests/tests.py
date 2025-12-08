@@ -480,6 +480,13 @@ def test_calculate_variables(client):
     assert data[0]["n"] == 57
     assert data[0]["category"] == "C1"
 
+# Test for /get_all_population endpoint
+def test_get_all_population(client):
+    response = client.get("/get_all_population?year=2000")
+    assert response.status_code == 200
+    data = response.json()
+    assert data == 57
+
 # Test for /get_population endpoint
 def test_get_population(client):
     response = client.get("/get_population?year=2000&cvegeo=1001")
