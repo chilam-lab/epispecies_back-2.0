@@ -856,7 +856,6 @@ async def get_variables_id(id: str, con: DuckDBConn = Depends(get_db)):
                 WHERE {var_table}.id = '{id}'
                 AND anio = {year_to_search}
                 GROUP BY anio, cvegeo, count;""").df()
-        
         search_count['decile'] = qcut(search_count['count'].rank(method='first'), 10, labels=range(1,11))
         decile_summary = search_count.groupby('decile').agg(municipalities=('count', 'size'), min_count=('count', 'min'), max_count=('count', 'max') ).reset_index() 
         
