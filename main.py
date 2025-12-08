@@ -600,8 +600,8 @@ async def calculate_variables(category: str, year : str,
                 else:
                     nx_params.append("MUJERES")
             if cvegeo_list_category:
-                placeholder_cvegeo_list = ",".join(["?" for _ in cvegeo_list_category])
-                nx_query_cve += f" AND cvegeo IN ({placeholder_cvegeo_list})"
+                placeholders = ",".join(["?" for _ in cvegeo_list_category])
+                nx_query_cve += f" AND CAST(cvegeo AS VARCHAR) IN ({placeholders})"
                 nx_params.extend(cvegeo_list_category)
             result = con.sql(nx_query_cve, params=nx_params).fetchone()[0]
             calc_list.append({"category": current_category,"ncx": ncx, "nx":result, "n": n,"nc":nc})
@@ -791,9 +791,9 @@ async def get_all_population(year: str, cve_state:str = "", cvegeo:str = "", cve
 
         if cve_metropoli != "":
             if cve_metropoli == "all":
-                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM METROPOLI WHERE cve_metropoli IS NOT NULL;").fetchall()
+                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli IS NOT NULL;").fetchall()
             else:
-                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
+                cvegeo_list = con.sql(f"SELECT DISTINCT cvegeo FROM CVE_METROPOLI WHERE cve_metropoli = '{cve_metropoli}';").fetchall()
             cvegeo_list_by_region = [row[0] for row in cvegeo_list]  # Extract cvegeo values
             if cvegeo_list_by_region:
                 placeholders = ",".join(["?" for _ in cvegeo_list_by_region])
