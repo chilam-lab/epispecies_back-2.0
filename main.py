@@ -7,6 +7,7 @@ from typing import Generator
 from fastapi.encoders import jsonable_encoder
 from services.clean_csv import clean_csv_in_chunks, db_columns_to_lowercase
 from services.file_helper_functions import get_csv_in_directory_to_clean
+from services.variable_calculation_helpers import *
 from pandas import qcut, read_sql, DataFrame
 import os
 from pydantic import BaseModel
@@ -604,8 +605,22 @@ async def calculate_variables(category: str, year : str,
                 nx_query_cve += f" AND CAST(cvegeo AS VARCHAR) IN ({placeholders})"
                 nx_params.extend(cvegeo_list_category)
             result = con.sql(nx_query_cve, params=nx_params).fetchone()[0]
-            calc_list.append({"category": current_category,"ncx": ncx, "nx":result, "n": n,"nc":nc})
 
+            res = []
+
+            a = ncx
+            b = result - ncx
+            c = nc - ncx
+            d = n - (a + b + c)
+            
+            res.append({"epsilon": epsilon(ncx, nc, result, n)})
+            res.append({"score" : score(ncx, nc, result, n)})
+            res.append({"Log_lift" : log_lift(ncx, nc, result, n)})
+            res.append({"RR" : np.round(np.exp(res[2]["Log_lift"]), 2)})
+            res.append({"SE_loglift" : np.round(np.sqrt(1/a - 1/(a+b) + 1/c - 1/(c+d)), 2)})
+            res.append({"ICinf" : np.round(np.exp(res[2]["Log_lift"] - 1.96 * res[4]["SE_loglift"]), 2)})
+            res.append({"ICsup" : np.round(np.exp(res[2]["Log_lift"] + 1.96 * res[4]["SE_loglift"]), 2)})
+            calc_list.append({"category": current_category,"ncx": ncx, "nx":result, "n": n,"nc":nc, "calculations": res})
         return calc_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
