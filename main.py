@@ -526,8 +526,7 @@ async def calculate_variables(category: str, year : str,
             gender=gen,
             con=con
         )
-        n = calc_n[0][0]
-        print(n)
+        n = calc_n
 
        # ----------NC-----------
         nc_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ?"
