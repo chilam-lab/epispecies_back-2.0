@@ -36,7 +36,7 @@ def in_memory_db():
             (3, 'Doe', 'Heart Disease', '2020', 'G3', 'Group3', 'E2', 'C3', 'Cause3');
     """)
     conn.execute("""
-        CREATE TABLE RAWCOVAR (
+        CREATE TABLE CATEGORIES (
             cvegeo INTEGER,
             anio VARCHAR,
             mes INTEGER,
@@ -44,7 +44,7 @@ def in_memory_db():
             valor INTEGER,
             categoria VARCHAR
         );
-        INSERT INTO RAWCOVAR VALUES
+        INSERT INTO CATEGORIES VALUES
             (1001, '2000', 2, 'I1', 1, 'C1'),
             (2, '2013', 12, 'I2', 2, 'C2'),
             (1001, '2000', 2, 'I1', 9, 'C1'),
@@ -150,17 +150,124 @@ def in_memory_db():
             ('1001', '2000', 25),
             ('1001', '2000', 45);
     """)
+
+    conn.execute("""
+        CREATE TABLE VAR_DISEASES (
+            id VARCHAR,
+            enfermedad VARCHAR,
+            cve_enfermedad VARCHAR
+        );
+        INSERT INTO VAR_DISEASES VALUES
+            ('EN400', 'Enfermedades respiratorias 2000', '9'),
+            ('EN401', 'Enfermedades cardiovasculares 2000', '4'),
+            ('EN402', 'Enfermedades neurologicas 2000', '10'),
+            ('EN403', 'Enfermedades respiratorias 2000', '9'),
+            ('EN404', 'Enfermedades cardiovasculares 2000', '4'),
+            ('EN405', 'Enfermedades neurologicas 2000', '10'),
+            ('EN406', 'Enfermedades respiratorias 2000', '9'),
+            ('EN407', 'Enfermedades cardiovasculares 2000', '4'),
+            ('EN408', 'Enfermedades neurologicas 2000', '10'),
+            ('EN409', 'Enfermedades neurologicas 2000', '10'),
+            ('EN410', 'Transtornos mentales 2000', '12');
+    """)
+    conn.execute("""
+        CREATE TABLE DATA_VAR_DISEASES (
+            id VARCHAR,
+            cve_enfermedad VARCHAR,
+            anio INTEGER,
+            cvegeo VARCHAR,
+            count INTEGER
+        );
+        INSERT INTO DATA_VAR_DISEASES VALUES
+            ('EN400', '9', 2000, '1001', 10),
+            ('EN400', '4', 2000, '1002', 10),
+            ('EN400', '10', 2000, '1003', 10),
+            ('EN400', '9', 2000, '1004', 10),
+            ('EN400', '4', 2000, '1005', 10),
+            ('EN400', '10', 2000, '1006', 10),
+            ('EN400', '9', 2000, '1007', 10),
+            ('EN400', '4', 2000, '1008', 10),
+            ('EN400', '10', 2000, '1009', 10),
+            ('EN400', '10', 2000, '1010', 10),
+            ('EN400', '12', 2000, '1011', 10);
+    """)
+    conn.execute("""
+        CREATE TABLE VAR_GROUP (
+            id VARCHAR,
+            grupo VARCHAR,
+            cve_grupo VARCHAR
+        );
+        INSERT INTO VAR_GROUP VALUES
+            ('GR400', 'Grupo 1 2000', '9'),
+            ('GR401', 'Grupo 2 2000', '4'),
+            ('GR402', 'Grupo 3 2000', '10'),
+            ('GR403', 'Grupo 1 2000', '9'),
+            ('GR404', 'Grupo 2 2000', '4'),
+            ('GR405', 'Grupo 3 2000', '10'),
+            ('GR406', 'Grupo 1 2000', '9'),
+            ('GR407', 'Grupo 2 2000', '4'),
+            ('GR408', 'Grupo 3 2000', '10'),
+            ('GR409', 'Grupo 3 2000', '10'),
+            ('GR410', 'Grupo 4 2000', '12');
+    """)
+    conn.execute("""
+        CREATE TABLE DATA_VAR_GROUP (
+            id VARCHAR,
+            cve_grupo VARCHAR,
+            anio INTEGER,
+            cvegeo VARCHAR,
+            count INTEGER
+        );
+        INSERT INTO DATA_VAR_GROUP VALUES
+            ('GR400', '9', 2000, '1001', 10),
+            ('GR400', '4', 2000, '1002', 10),
+            ('GR400', '10', 2000, '1003', 10),
+            ('GR400', '9', 2000, '1004', 10),
+            ('GR400', '4', 2000, '1005', 10),
+            ('GR400', '10', 2000, '1006', 10),
+            ('GR400', '9', 2000, '1007', 10),
+            ('GR400', '4', 2000, '1008', 10),
+            ('GR400', '10', 2000, '1009', 10),
+            ('GR400', '10', 2000, '1010', 10),
+            ('GR400', '12', 2000, '1011', 10);
+    """)
+    conn.execute("""
+        CREATE TABLE VAR_CAUSEDEATH (
+            id VARCHAR,
+            causa_def VARCHAR,
+            cve_causa_def VARCHAR
+        );
+        INSERT INTO VAR_CAUSEDEATH VALUES
+            ('A400', 'def 1 2000', '9'),
+            ('B401', 'def 2 2000', '4'),
+            ('I402', 'def 3 2000', '10'),
+            ('H403', 'def 4 2000', '12');
+    """)
+    conn.execute("""
+        CREATE TABLE DATA_VAR_CAUSEDEATH (
+            id VARCHAR,
+            cve_causa_def VARCHAR,
+            anio INTEGER,
+            cvegeo VARCHAR,
+            count INTEGER
+        );
+        INSERT INTO DATA_VAR_CAUSEDEATH VALUES
+            ('A400', '9', 2000, '1001', 10),
+            ('B401', '4', 2000, '1001', 10),
+            ('I402', '10', 2000, '1001', 10),
+            ('C403', '12', 2000, '1001', 10);
+    """)
     # Attach your original database
-    conn.execute("ATTACH 'duckdb_files/my_database.db' AS orig")
+    # conn.execute("ATTACH 'duckdb_files/my_database.db' AS orig")
 
-    # Copy tables we need
-    conn.execute("CREATE OR REPLACE TABLE VAR_DISEASES AS SELECT * FROM orig.VAR_DISEASES")
-    conn.execute("CREATE OR REPLACE TABLE VAR_GROUP AS SELECT * FROM orig.VAR_GROUP")
-    conn.execute("CREATE OR REPLACE TABLE VAR_CAUSEDEATH AS SELECT * FROM orig.VAR_CAUSEDEATH")
+    # # Copy tables we need
+    # conn.execute("CREATE OR REPLACE TABLE VAR_DISEASES AS SELECT * FROM orig.VAR_DISEASES")
+    # conn.execute("CREATE OR REPLACE TABLE VAR_GROUP AS SELECT * FROM orig.VAR_GROUP")
+    # conn.execute("CREATE OR REPLACE TABLE VAR_CAUSEDEATH AS SELECT * FROM orig.VAR_CAUSEDEATH")
 
-    conn.execute("CREATE OR REPLACE TABLE DATA_VAR_DISEASES AS SELECT * FROM orig.DATA_VAR_DISEASES")
-    conn.execute("CREATE OR REPLACE TABLE DATA_VAR_GROUP AS SELECT * FROM orig.DATA_VAR_GROUP")
-    conn.execute("CREATE OR REPLACE TABLE DATA_VAR_CAUSEDEATH AS SELECT * FROM orig.DATA_VAR_CAUSEDEATH")
+    # conn.execute("CREATE OR REPLACE TABLE DATA_VAR_DISEASES AS SELECT * FROM orig.DATA_VAR_DISEASES")
+    # conn.execute("CREATE OR REPLACE TABLE DATA_VAR_GROUP AS SELECT * FROM orig.DATA_VAR_GROUP")
+    # conn.execute("CREATE OR REPLACE TABLE DATA_VAR_CAUSEDEATH AS SELECT * FROM orig.DATA_VAR_CAUSEDEATH")
     yield conn
     conn.close()
 
@@ -364,13 +471,13 @@ def test_get_third_class_missing_params(client: TestClient):
 
 # Test for /calculate_variables endpoint
 def test_calculate_variables(client):
-    response = client.get("/calculate_variables?categoria=C1&year=2000&cve_enfermedad=1")
+    response = client.get("/calculate_variables?category=C1&year=2000&cve_enfermedad=1")
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
     assert type(data) == list
-    assert data[0]["nx"] == 100
-    assert data[0]["n"] == 100
+    assert data[0]["nx"] == 57
+    assert data[0]["n"] == 57
     assert data[0]["category"] == "C1"
 
 # Test for /get_population endpoint
@@ -436,7 +543,7 @@ def test_get_variables(client):
     data = response.json()
     assert len(data) > 0
     assert type(data) == list
-    assert any(enfermedad["name"] == "Enfermedades respiratorias 2000" and enfermedad["id"] == "EN1000" for enfermedad in data)
+    assert any(enfermedad["name"] == "Enfermedades respiratorias 2000" and enfermedad["id"] == "EN400" for enfermedad in data)
     
     num_of_diseases = 0
     num_of_group = 0
@@ -448,9 +555,9 @@ def test_get_variables(client):
             num_of_group += 1
         else:
             num_of_cause += 1
-    assert num_of_diseases == 100
-    assert num_of_group == 964
-    assert num_of_cause == 14578
+    assert num_of_diseases == 11
+    assert num_of_group == 11
+    assert num_of_cause == 4
     
 def test_upload_csv(client: TestClient):
     csv_content = "id,name,cve,description\n1,test,10,Otras formas de enfermedad del corazon"
@@ -467,16 +574,16 @@ def test_get_variables_id(client):
     data = response.json()
     assert len(data) > 0
     assert type(data) == list
-    assert any(enfermedad["id"] == "EN400" and enfermedad["data"][2] == "(35-1397]" for enfermedad in data)
+    assert any(enfermedad["id"] == "EN400" and enfermedad["bin"] == 9 for enfermedad in data)
 
 # Test for /variables_id with GR6200 parameter endpoint
 def test_get_variables_id_gr(client):
-    response = client.get("/variables/id?id=GR6200")
+    response = client.get("/variables/id?id=GR400")
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
     assert type(data) == list
-    assert any(enfermedad["level_id"] == "GR6200-9" and enfermedad["data"][2] == "(2-3]" for enfermedad in data)
+    assert any(enfermedad["level_id"] == "GR400-9" and enfermedad["bin"] == 9 for enfermedad in data)
 
 def test_clean_csv_in_chunks(client):
     file_content = "tests/csvs/Prueba1.csv"
