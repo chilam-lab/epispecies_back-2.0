@@ -591,7 +591,7 @@ async def calculate_variables(category: str, year : str,
             nx_params = [year]
             
             if age is not None:
-                nx_query_cve += " AND edad_gpo = ?"
+                nx_query_cve += " AND CAST(edad_gpo AS VARCHAR) = ?"
                 nx_params.append(age)
             if gender is not None:
                 nx_query_cve += " AND sexo = ?"
