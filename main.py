@@ -606,21 +606,21 @@ async def calculate_variables(category: str, year : str,
                 nx_params.extend(cvegeo_list_category)
             result = con.sql(nx_query_cve, params=nx_params).fetchone()[0]
 
-            res = []
-
             a = ncx
             b = result - ncx
             c = nc - ncx
             d = n - (a + b + c)
             
-            res.append({"epsilon": epsilon(ncx, nc, result, n)})
-            res.append({"score" : score(ncx, nc, result, n)})
-            res.append({"Log_lift" : log_lift(ncx, nc, result, n)})
-            res.append({"RR" : np.round(np.exp(res[2]["Log_lift"]), 2)})
-            res.append({"SE_loglift" : np.round(np.sqrt(1/a - 1/(a+b) + 1/c - 1/(c+d)), 2)})
-            res.append({"ICinf" : np.round(np.exp(res[2]["Log_lift"] - 1.96 * res[4]["SE_loglift"]), 2)})
-            res.append({"ICsup" : np.round(np.exp(res[2]["Log_lift"] + 1.96 * res[4]["SE_loglift"]), 2)})
-            calc_list.append({"category": current_category,"ncx": ncx, "nx":result, "n": n,"nc":nc, "calculations": res})
+            calc_epsilon = epsilon(ncx, nc, result, n)
+            calc_score = score(ncx, nc, result, n)
+            calc_log_lift = log_lift(ncx, nc, result, n)
+            calc_RR = np.round(np.exp(calc_log_lift), 2)
+            calc_SE_loglift = np.round(np.sqrt(1/a - 1/(a+b) + 1/c - 1/(c+d)), 2)
+            calc_ICinf = np.round(np.exp(calc_log_lift - 1.96 * calc_SE_loglift), 2)
+            calc_ICsup = np.round(np.exp(calc_log_lift + 1.96 * calc_SE_loglift), 2)
+            calc_list.append({"category": current_category,"ncx": ncx, "nx":result, "n": n,"nc":nc,
+                              "epsilon": calc_epsilon, "score": calc_score, "log_lift": calc_log_lift, "RR": calc_RR,
+                              "SE_loglist": calc_SE_loglift, "ICinf": calc_ICinf, "ICsup": calc_ICsup})
         return calc_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
