@@ -5,26 +5,36 @@ import unicodedata
 
 def detect_encoding(file_path, sample_size=1000000):
     """Detect file encoding from a sample."""
+    sample = b''
+    repeats = 10
     with open(file_path, 'rb') as f:
-        sample = f.read(sample_size)
-    result = chardet.detect(sample)
-    return result['encoding'], result['confidence']
+        for chunk in read_in_chunks(f, sample_size):
+            sample += chunk
+            repeats -= 1
+            if repeats <= 0:
+                f.close()
+                break
+    sample = sample.decode('utf-8', 'replace')
+    result = chardet.detect(sample.encode('utf-8', 'replace'))
+    return result['encoding']
 
-def normalize(string_chunk):
-    if isinstance(string_chunk, str):
-        norm = unicodedata.normalize('NFD', string_chunk)
-        return ''.join([c for c in norm if not unicodedata.combining(c)])
-    return string_chunk
+def read_in_chunks(file_to_read, sample_size):
+    while True:
+        chunk = file_to_read.read(sample_size)
+        if not chunk:
+            break
+        yield chunk
 
 def clean_csv_in_chunks(input_path, output_path, chunk_size=100000):
     """Clean CSV in chunks to handle large files."""    
     # Process in chunks
     first_chunk = True
-    chunk_no = 0    
-    for chunk in pd.read_csv(input_path, chunksize=chunk_size, encoding="utf-8", encoding_errors='replace',
+    chunk_no = 0
+    encode = detect_encoding(input_path)
+    print(encode)
+    for chunk in pd.read_csv(input_path, chunksize=chunk_size, encoding=encode, encoding_errors='replace',
                         on_bad_lines='warn', dtype=str, engine='python', low_memory=True):
         chunk.apply(lambda x: ''.join(ch for ch in str(x) if ord(ch) >= 32 or ch in '\n\r\t'))
-        chunk.apply(lambda s: normalize(s))
         mode = 'w' if first_chunk else 'a'
         chunk.to_csv(output_path, mode=mode, index=False, header=first_chunk, encoding='utf-8')
         first_chunk = False

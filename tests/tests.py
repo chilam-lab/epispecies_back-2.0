@@ -11,7 +11,7 @@ from fastapi import HTTPException
 from unittest.mock import patch
 import json
 from unittest.mock import mock_open, patch
-from services.clean_csv import detect_encoding, normalize, clean_csv_in_chunks, db_columns_to_lowercase
+from services.clean_csv import detect_encoding, clean_csv_in_chunks, db_columns_to_lowercase
 
 # Fixture for in-memory DuckDB database
 @pytest.fixture
@@ -261,17 +261,6 @@ def in_memory_db():
             ('I402', '10', 2000, '1001', 10),
             ('C403', '12', 2000, '1001', 10);
     """)
-    # Attach your original database
-    # conn.execute("ATTACH 'duckdb_files/my_database.db' AS orig")
-
-    # # Copy tables we need
-    # conn.execute("CREATE OR REPLACE TABLE VAR_DISEASES AS SELECT * FROM orig.VAR_DISEASES")
-    # conn.execute("CREATE OR REPLACE TABLE VAR_GROUP AS SELECT * FROM orig.VAR_GROUP")
-    # conn.execute("CREATE OR REPLACE TABLE VAR_CAUSEDEATH AS SELECT * FROM orig.VAR_CAUSEDEATH")
-
-    # conn.execute("CREATE OR REPLACE TABLE DATA_VAR_DISEASES AS SELECT * FROM orig.DATA_VAR_DISEASES")
-    # conn.execute("CREATE OR REPLACE TABLE DATA_VAR_GROUP AS SELECT * FROM orig.DATA_VAR_GROUP")
-    # conn.execute("CREATE OR REPLACE TABLE DATA_VAR_CAUSEDEATH AS SELECT * FROM orig.DATA_VAR_CAUSEDEATH")
     yield conn
     conn.close()
 
@@ -306,54 +295,13 @@ def test_show_tables(client):
 
 #Test for checking encoding without an initial file path
 def test_check_encoding():
-    file_content = "Hola Mundo"
-    chardet_result = {"encoding": "utf-8", "confidence": 0.99}
+    file_content = b'Hola Mundo'
+    chardet_result = {"encoding" : "utf-8"}
     with patch("builtins.open", mock_open(read_data= file_content)):
         with patch("chardet.detect", return_value= chardet_result) as mock_detect:
-            encoding, confidence = detect_encoding("dummy_file.txt", sample_size=1000)
+            encoding = detect_encoding("dummy_file.txt", sample_size=1000)
     assert encoding == "utf-8"
-    assert confidence == 0.99
     mock_detect.assert_called_with(file_content)
-
-#Test for checking encoding with an initial file path
-def test_check_encoding_with_file_path():
-    file_content = "tests/csvs/Prueba1.csv"
-    chardet_result = {"encoding": "utf-8", "confidence": 0.99}
-    with patch("builtins.open", mock_open(read_data= file_content)):
-        with patch("chardet.detect", return_value= chardet_result) as mock_detect:
-            encoding, confidence = detect_encoding(file_content, sample_size=1000)
-    assert encoding == "utf-8"
-    assert confidence == 0.99
-    mock_detect.assert_called_with(file_content)
-
-#Test for checking accent or special characters removal (Normalize)
-def test_check_accent_removal():
-    string_to_check = "Corazón"
-    string_converted = normalize(string_to_check)
-    assert string_converted == "Corazon"
-
-#Test for checking accent or special characters removal (Normalize) fialure
-def test_check_accent_removal_fail():
-    string_to_check = "Corazón"
-    string_converted = normalize(string_to_check)
-    with pytest.raises(AssertionError):
-        assert string_converted == "Corazón"
-
-# Succesfull test for /clean/column endpoint
-#def test_columns_to_lower_case_success():
-#    tn = "RAWDATA"
-#    db_columns_to_lowercase(tn, in_memory_db[get_db])
-#    assert "columns" in data
-#    assert set(data["columns"]) == {"id", "name", "cause", "anio", "cve_grupo", "grupo", "cve_enfermedad", "cve_causa_def", "causa_def"}
-
-# Test for /clean/column endpoint that check for failure
-#def test_columns_to_lower_case_fail(client):
-#    response = client.get("/clean/columns_to_lower_case?table_name=RAWDATA")
-#    assert response.status_code == 200
-#    data = response.json()
-#    assert "columns" in data
-#    with pytest.raises(AssertionError):
-#        assert set(data["columns"]) == {"Id", "Name", "Cause", "Anio", "CVE_Grupo", "Grupo", "CVE_Enfermedad", "CVE_Causa_def", "Causa_def"}
 
 # Test for /columns endpoint
 def test_get_columns(client):
@@ -570,7 +518,7 @@ def test_get_variables(client):
     assert num_of_cause == 4
     
 def test_upload_csv(client: TestClient):
-    csv_content = "id,name,cve,description\n1,test,10,Otras formas de enfermedad del corazon"
+    csv_content = 'id,name,cve,description\n1,test,10,Otras formas de enfermedad del corazon'
     response = client.post(
         "/upload_csv",
         files={"file": ("test.csv", csv_content, "text/csv")}
@@ -595,17 +543,6 @@ def test_get_variables_id_gr(client):
     assert type(data) == list
     assert any(enfermedad["level_id"] == "GR400-9" and enfermedad["bin"] == 9 for enfermedad in data)
 
-def test_clean_csv_in_chunks(client):
-    file_content = "tests/csvs/Prueba1.csv"
-    output_file = "tests/csvs/Prueba1C.csv"
-    chardet_result = {"encoding": "utf-8", "confidence": 0.99}
-    with patch("builtins.open", mock_open(read_data= file_content)):
-        with patch("chardet.detect", return_value= chardet_result) as mock_detect:
-            encoding, confidence = detect_encoding(file_content, sample_size=1000)
-    assert encoding == "utf-8"
-    assert confidence == 0.99
-    mock_detect.assert_called_with(file_content)
-
 def test_clean_csv_in_chunks(tmp_path, monkeypatch):
     """Test the clean_csv_in_chunks function with various scenarios."""
 
@@ -619,11 +556,13 @@ def test_clean_csv_in_chunks(tmp_path, monkeypatch):
     4,"Alice Brown","Mixed encoding test: café résumé",2023
     """
 
-    with open(input_file, 'w', encoding='utf-8') as f:
+    test_csv_content = test_csv_content.encode("utf-8", "replace")
+
+    with open(input_file, 'wb') as f:
         f.write(test_csv_content)
 
     def mock_detect_encoding(file_path, sample_size=1000000):
-        return 'utf-8', 0.95
+        return 'utf-8'
 
     monkeypatch.setattr("services.clean_csv.detect_encoding", mock_detect_encoding)
     clean_csv_in_chunks(str(input_file), str(output_file), chunk_size=2)
