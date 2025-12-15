@@ -18,6 +18,7 @@ import tempfile
 import json
 import time
 from typing import Annotated
+from typing import List
 
 from os import listdir, remove
 from os.path import join, exists
@@ -818,6 +819,53 @@ async def get_all_population(year: str, cve_state:str = "", cvegeo:str = "", cve
 
         result = con.sql(query, params=params).fetchall()
         return result[0][0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
+@app.post("/get_population_batch", tags=["Population"], summary="Get all population with batches the cvegeo")
+async def get_population_batch(year: str, 
+                               cve_states:List[str] = [], 
+                               cvegeos:List[str] = [], 
+                               age_group:str = "", 
+                               gender:str = "", con: DuckDBConn = Depends(get_db)):
+    """
+    Get all population by batches that match the filters.
+
+    *Params*
+
+    year: numerical value of year. \n
+    cvegeo: numerical value of cvegeo. \n
+    edad_gpo: range of age values (ex. 0-04). \n
+    sexo: Gender value can be HOMBRES or MUJERES. \n
+
+    *Response*
+
+    A list of all population that match the query.
+    """
+    cve_list = {}
+
+    try:
+        if not year:
+            raise HTTPException(status_code=400, detail="Invalid input: year and cvegeo are required")
+        if cve_states and len(cve_states) > 0:
+            for state in cve_states:
+                query = "SELECT SUM(p.poblacion) FROM POPULATION p INNER JOIN ESTADO_MUN em ON p.cvegeo = em.cvegeo WHERE em.cve_estado = ? AND p.anio = ? "
+                params = [state, year]
+
+                if gender != "":
+                    query += " AND p.sexo = ?"
+                    params.append(gender)
+
+                if age_group != "":
+                    query += " AND p.edad_gpo = ?"
+                    params.append(age_group)
+                result = con.execute(query, params).fetchall()
+                print(f"Executing query: {query.strip()}")
+                print(f"With params: {params}")
+                print(result)
+                print(result[0])
+                cve_list[state] = result[0][0]
+        return cve_list
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
