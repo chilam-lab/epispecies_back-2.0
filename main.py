@@ -846,6 +846,8 @@ async def get_population_batch(year: str,
     try:
         if not year:
             raise HTTPException(status_code=400, detail="Invalid input: year and cvegeo are required")
+        if not cvegeos and not cve_states:
+            raise HTTPException(status_code=400, detail="Invalid input: cve_state or cvegeo are required")
         if cve_states and len(cve_states) > 0:
             for state in cve_states:
                 query = "SELECT SUM(p.poblacion) FROM POPULATION p INNER JOIN ESTADO_MUN em ON p.cvegeo = em.cvegeo WHERE em.cve_estado = ? AND p.anio = ? "
@@ -864,6 +866,25 @@ async def get_population_batch(year: str,
                 print(result)
                 print(result[0])
                 cve_list[state] = result[0][0]
+        elif cvegeos and len(cvegeos) > 0:
+            for mun in cvegeos:
+                query = "SELECT SUM(poblacion) FROM POPULATION WHERE cvegeo = ? AND anio = ? "
+                params = [mun, year]
+
+                if gender != "":
+                    query += " AND sexo = ?"
+                    params.append(gender)
+
+                if age_group != "":
+                    query += " AND edad_gpo = ?"
+                    params.append(age_group)
+                result = con.execute(query, params).fetchall()
+                print(f"Executing query: {query.strip()}")
+                print(f"With params: {params}")
+                print(result)
+                print(result[0])
+                cve_list[mun] = result[0][0]
+
         return cve_list
 
     except Exception as e:
