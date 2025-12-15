@@ -5,6 +5,7 @@ from starlette.background import BackgroundTasks
 from contextlib import contextmanager
 from typing import Generator
 from fastapi.encoders import jsonable_encoder
+from models.populationModel import PopulationBatchRequest
 from services.clean_csv import clean_csv_in_chunks, db_columns_to_lowercase
 from services.file_helper_functions import get_csv_in_directory_to_clean
 from services.variable_calculation_helpers import *
@@ -822,11 +823,7 @@ async def get_all_population(year: str, cve_state:str = "", cvegeo:str = "", cve
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 @app.post("/get_population_batch", tags=["Population"], summary="Get all population with batches the cvegeo")
-async def get_population_batch(year: str, 
-                               cve_states:List[str] = [], 
-                               cvegeos:List[str] = [], 
-                               age_group:str = "", 
-                               gender:str = "", con: DuckDBConn = Depends(get_db)):
+async def get_population_batch(request:PopulationBatchRequest, con: DuckDBConn = Depends(get_db)):
     """
     Get all population by batches that match the filters.
 
@@ -844,45 +841,37 @@ async def get_population_batch(year: str,
     cve_list = {}
 
     try:
-        if not year:
+        if not request.year:
             raise HTTPException(status_code=400, detail="Invalid input: year and cvegeo are required")
-        if not cvegeos and not cve_states:
+        if not request.cvegeos and not request.cve_states:
             raise HTTPException(status_code=400, detail="Invalid input: cve_state or cvegeo are required")
-        if cve_states and len(cve_states) > 0:
-            for state in cve_states:
+        if request.cve_states is not None and len(request.cve_states) > 0:
+            for state in request.cve_states:
                 query = "SELECT SUM(p.poblacion) FROM POPULATION p INNER JOIN ESTADO_MUN em ON p.cvegeo = em.cvegeo WHERE em.cve_estado = ? AND p.anio = ? "
-                params = [state, year]
+                params = [state, request.year]
 
-                if gender != "":
+                if request.gender is not None and request.gender != "":
                     query += " AND p.sexo = ?"
-                    params.append(gender)
+                    params.append(request.gender)
 
-                if age_group != "":
+                if request.age_group is not None and request.age_group != "":
                     query += " AND p.edad_gpo = ?"
-                    params.append(age_group)
+                    params.append(request.age_group)
                 result = con.execute(query, params).fetchall()
-                print(f"Executing query: {query.strip()}")
-                print(f"With params: {params}")
-                print(result)
-                print(result[0])
                 cve_list[state] = result[0][0]
-        elif cvegeos and len(cvegeos) > 0:
-            for mun in cvegeos:
+        elif request.cvegeos is not None and len(request.cvegeos) > 0:
+            for mun in request.cvegeos:
                 query = "SELECT SUM(poblacion) FROM POPULATION WHERE cvegeo = ? AND anio = ? "
-                params = [mun, year]
+                params = [mun, request.year]
 
-                if gender != "":
+                if request.gender is not None and request.gender != "":
                     query += " AND sexo = ?"
-                    params.append(gender)
+                    params.append(request.gender)
 
-                if age_group != "":
+                if request.age_group is not None and request.age_group != "":
                     query += " AND edad_gpo = ?"
-                    params.append(age_group)
+                    params.append(request.age_group)
                 result = con.execute(query, params).fetchall()
-                print(f"Executing query: {query.strip()}")
-                print(f"With params: {params}")
-                print(result)
-                print(result[0])
                 cve_list[mun] = result[0][0]
 
         return cve_list
