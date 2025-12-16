@@ -1029,6 +1029,7 @@ async def upload_csv(file: UploadFile = File(...)):
         download_file_name = "cleaned_" + file.filename
         with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
             clean_csv_in_chunks(input_path=file.file, output_path=f)
+        await file.close()
         return FileResponse(path, media_type="text/csv", filename=download_file_name,
                             background=BackgroundTasks().add_task(delete_tmp_file, path))
     except Exception as e:

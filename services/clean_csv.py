@@ -7,13 +7,20 @@ def detect_encoding(file_path, sample_size=1000000):
     """Detect file encoding from a sample."""
     sample = b''
     repeats = 10
-    with open(file_path, 'rb') as f:
-        for chunk in read_in_chunks(f, sample_size):
-            sample += chunk
+
+    if not isinstance(file_path, str):
+        while repeats > 0:
+            sample += file_path.read(sample_size)
             repeats -= 1
-            if repeats <= 0:
-                f.close()
-                break
+        file_path.seek(0)
+    else:
+        with open(file_path, 'rb') as f:
+            for chunk in read_in_chunks(f, sample_size):
+                sample += chunk
+                repeats -= 1
+                if repeats <= 0:
+                    f.close()
+                    break
     sample = sample.decode('utf-8', 'replace')
     result = chardet.detect(sample.encode('utf-8', 'replace'))
     return result['encoding']
