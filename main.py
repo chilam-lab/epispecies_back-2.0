@@ -612,12 +612,15 @@ async def calculate_variables(category: str, year : str,
             b = result - ncx
             c = nc - ncx
             d = n - (a + b + c)
+
+            # Haldane–Anscombe ONLY if needed
+            a, b, c, d = apply_haldane_if_needed(a, b, c, d)
             
             calc_epsilon = epsilon(ncx, nc, result, n)
             calc_score = score(ncx, nc, result, n)
-            calc_log_lift = log_lift(ncx, nc, result, n)
+            calc_log_lift = np.round(np.log((a / (a + b)) / (c / (c + d))), 3)
             calc_RR = np.round(np.exp(calc_log_lift), 2)
-            calc_SE_loglift = np.round(np.sqrt(1/a - 1/(a+b) + 1/c - 1/(c+d)), 2)
+            calc_SE_loglift = np.round(np.sqrt(1/a + 1/b + 1/c + 1/d), 3)
             calc_ICinf = np.round(np.exp(calc_log_lift - 1.96 * calc_SE_loglift), 2)
             calc_ICsup = np.round(np.exp(calc_log_lift + 1.96 * calc_SE_loglift), 2)
             calc_list.append({"category": current_category,"ncx": ncx, "nx":result, "n": n,"nc":nc,

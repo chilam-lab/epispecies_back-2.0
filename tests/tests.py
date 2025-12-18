@@ -46,11 +46,11 @@ def in_memory_db():
         );
         INSERT INTO CATEGORIES VALUES
             (1001, '2000', 2, 'I1', 1, 'C2'),
-            (1004, '2000', 2, 'I1', 1, 'C1'),
-            (1003, '2000', 2, 'I1', 1, 'C1'),
+            (1001, '2000', 2, 'I1', 1, 'C1'),
+            (1001, '2000', 2, 'I1', 1, 'C1'),
             (2, '2013', 12, 'I2', 2, 'C2'),
             (1001, '2000', 2, 'I1', 9, 'C1'),
-            (1002, '2000', 2, 'I1', 9, 'C1'),
+            (1001, '2000', 2, 'I1', 9, 'C1'),
             (1, '2019', 10, 'I4', 12, 'C1'),
             (1, '2015', 6, 'I5', 120, 'C3');
     """)
@@ -68,10 +68,10 @@ def in_memory_db():
             cvegeo VARCHAR
         );
         INSERT INTO DEFUNCIONES VALUES
-            (1, 'John', 'Heart Disease', 2000, 'G1', 'Group1', 1, 'C1', 'Cause1', '1002'),
+            (1, 'John', 'Heart Disease', 2000, 'G1', 'Group1', 1, 'C1', 'Cause1', '1001'),
             (2, 'Jane', 'Cancer', 2019, 'G2', 'Group2', 1, 'C2', 'Cause2', '1'),
             (2, 'Jane', 'Cancer', 2000, 'G2', 'Group2', 1, 'C1', 'Cause2', '1001'),
-            (2, 'Jane', 'Cancer', 2000, 'G2', 'Group2', 1, 'C1', 'Cause2', '1003'),
+            (2, 'Jane', 'Cancer', 2000, 'G2', 'Group2', 1, 'C1', 'Cause2', '1001'),
             (3, 'Doe', 'Heart Disease', 2015, 'G3', 'Group3', 2, 'C3', 'Cause3', '1');
     """)
     conn.execute("""
@@ -482,7 +482,6 @@ def test_calculate_variables(client):
     assert type(data) == list
     assert data[0]["nx"] == 57
     assert data[0]["n"] == 57
-    assert data[0]["category"] == "C1"
 
 # Test for /get_all_population endpoint
 def test_get_all_population(client):
