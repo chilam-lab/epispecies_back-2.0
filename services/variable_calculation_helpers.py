@@ -4,6 +4,8 @@ import numpy as np
 def epsilon(ncx, nc, nx, N):
     num = nx * ((ncx / nx) - (nc / N))
     den = np.sqrt(nx * (nc / N) * (1 - (nc / N)))
+    if den == 0:
+        return 0
     return np.round(num / den, 2)
 
 def log_lift(ncx, nc, nx, N):

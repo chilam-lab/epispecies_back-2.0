@@ -519,7 +519,6 @@ async def calculate_variables(category: str, year : str,
                 gen = "HOMBRES"
             else:
                 gen = "MUJERES"
-
         calc_n = await get_all_population(
             year=year,
             cve_state=cve_state,
@@ -530,6 +529,7 @@ async def calculate_variables(category: str, year : str,
             con=con
         )
         n = calc_n
+        print("N: ",n)
 
        # ----------NC-----------
         nc_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ?"
@@ -557,6 +557,7 @@ async def calculate_variables(category: str, year : str,
             nc_params.append(gender)
 
         nc = con.sql(nc_query, params=nc_params).fetchall()[0][0]
+        print("NC: ",nc)
         ## ----CATEGORIES--
 
         for current_category in categories_list:
@@ -584,6 +585,7 @@ async def calculate_variables(category: str, year : str,
                 ncx_query += " AND sexo = ?"
                 ncx_params.append(gender)
             ncx = con.sql(ncx_query, params=ncx_params).fetchone()[0]
+            print("NCX: ",ncx)
 
             #-----NX-----
             nx_query_cve = f"""
@@ -607,6 +609,7 @@ async def calculate_variables(category: str, year : str,
                 nx_query_cve += f" AND CAST(cvegeo AS VARCHAR) IN ({placeholders})"
                 nx_params.extend(cvegeo_list_category)
             result = con.sql(nx_query_cve, params=nx_params).fetchone()[0]
+            print("NX: ", result)
 
             a = ncx
             b = result - ncx
@@ -625,7 +628,7 @@ async def calculate_variables(category: str, year : str,
             calc_ICsup = np.round(np.exp(calc_log_lift + 1.96 * calc_SE_loglift), 2)
             calc_list.append({"category": current_category,"ncx": ncx, "nx":result, "n": n,"nc":nc,
                               "epsilon": calc_epsilon, "score": calc_score, "log_lift": calc_log_lift, "RR": calc_RR,
-                              "SE_loglist": calc_SE_loglift, "ICinf": calc_ICinf, "ICsup": calc_ICsup})
+                              "SE_loglift": calc_SE_loglift, "ICinf": calc_ICinf, "ICsup": calc_ICsup})
         return calc_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
