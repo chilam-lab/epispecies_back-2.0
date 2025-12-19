@@ -529,7 +529,6 @@ async def calculate_variables(category: str, year : str,
             con=con
         )
         n = calc_n
-        print("N: ",n)
 
        # ----------NC-----------
         nc_query = "SELECT COUNT(cvegeo) FROM DEFUNCIONES WHERE cve_enfermedad = ? AND anio = ?"
@@ -557,7 +556,6 @@ async def calculate_variables(category: str, year : str,
             nc_params.append(gender)
 
         nc = con.sql(nc_query, params=nc_params).fetchall()[0][0]
-        print("NC: ",nc)
         ## ----CATEGORIES--
 
         for current_category in categories_list:
@@ -585,7 +583,6 @@ async def calculate_variables(category: str, year : str,
                 ncx_query += " AND sexo = ?"
                 ncx_params.append(gender)
             ncx = con.sql(ncx_query, params=ncx_params).fetchone()[0]
-            print("NCX: ",ncx)
 
             #-----NX-----
             nx_query_cve = f"""
@@ -609,7 +606,6 @@ async def calculate_variables(category: str, year : str,
                 nx_query_cve += f" AND CAST(cvegeo AS VARCHAR) IN ({placeholders})"
                 nx_params.extend(cvegeo_list_category)
             result = con.sql(nx_query_cve, params=nx_params).fetchone()[0]
-            print("NX: ", result)
 
             a = ncx
             b = result - ncx
