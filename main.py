@@ -303,41 +303,6 @@ async def shutdown_event():
 async def root(con: DuckDBConn = Depends(get_db)):
     return {"message": "Hello World"}
 
-@app.get("/show/tables", tags=["Show"], summary="Show project tables.")
-async def show_tables(con: DuckDBConn = Depends(get_db)):
-    """
-    Display all created tables in the project.
-
-    *Response*
-
-    A dictionary of all tables.
-    """
-    try:
-        tables = con.sql("SHOW TABLES")
-        result = tables.to_df().to_dict(orient="records")
-        return {"tables": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
-
-@app.get("/show/columns", tags=["Show"], summary="Show columns of table.")
-async def get_columns(table_name:str, con: DuckDBConn = Depends(get_db)):
-    """
-    Display all columns of a given table.
-
-    *Params*
-
-    table_name: name of table to query.
-
-    *Response*
-
-    A JSON of all columns in the table.
-    """
-    try:
-        rel = con.sql(f"DESCRIBE {table_name}")
-        column_names = [row[0] for row in rel.fetchall()]
-        return jsonable_encoder({"columns": column_names})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
 @app.get("/unique_pair_columns", tags=["Column"], summary="Get unique values between two columns.")
 async def get_unique_pair_columns(column1: str, column2: str, table: str, con: DuckDBConn = Depends(get_db)):
